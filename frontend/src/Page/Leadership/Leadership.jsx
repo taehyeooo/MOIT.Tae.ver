@@ -1,5 +1,5 @@
 import React from "react";
-import Human1 from "../../assets/Human1.jpg";
+import Human1 from "../../assets/Human1.webp";
 
 const Leadership = () => {
   const executives = [
