@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import { useAuth } from "../../context/AuthContext"; // AuthContext를 사용하기 위해 import
+import { useAuth } from "../../context/AuthContext.jsx"; // 1단계에서 만든 AuthContext.jsx를 사용하도록 경로를 수정합니다.
 
 const AdminLogin = () => {
   const [formData, setFormData] = useState({
@@ -10,7 +10,7 @@ const AdminLogin = () => {
   });
   const [error, setError] = useState(null);
   const navigate = useNavigate();
-  const { setUser } = useAuth(); // AuthContext에서 setUser 함수를 가져옴
+  const { setUser } = useAuth(); // AuthContext에서 setUser 함수를 가져옵니다.
 
   // 사용자가 입력 필드에 타이핑할 때마다 state를 업데이트하는 함수
   const handleChange = (e) => {
@@ -66,10 +66,7 @@ const AdminLogin = () => {
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           <div className="space-y-4">
             <div>
-              <label
-                htmlFor="username"
-                className="block text-sm font-medium text-gray-700" // text-xm -> text-sm 오타 수정
-              >
+              <label htmlFor="username" className="block text-sm font-medium text-gray-700">
                 관리자 아이디
               </label>
               <input
@@ -77,17 +74,14 @@ const AdminLogin = () => {
                 name="username"
                 type="text"
                 required
-                value={formData.username} // state와 input 값 연결
-                onChange={handleChange} // handleChange 함수 연결
+                value={formData.username}
+                onChange={handleChange}
                 className="mt-1 block w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-300"
                 placeholder="관리자 아이디"
               />
             </div>
             <div>
-              <label
-                htmlFor="password"
-                className="block text-sm font-medium text-gray-700" // text-xm -> text-sm 오타 수정
-              >
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
                 관리자 비밀번호
               </label>
               <input
@@ -95,8 +89,8 @@ const AdminLogin = () => {
                 name="password"
                 type="password"
                 required
-                value={formData.password} // state와 input 값 연결
-                onChange={handleChange} // handleChange 함수 연결
+                value={formData.password}
+                onChange={handleChange}
                 className="mt-1 block w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-300"
                 placeholder="관리자 비밀번호"
               />
@@ -104,8 +98,8 @@ const AdminLogin = () => {
           </div>
 
           {error && (
-            <div className="bg-red-50 text-red-500 p-4 rounded-lg text-sm font-bold text-center">
-              {error.message}
+            <div className="bg-red-50 text-red-500 p-4 rounded-lg text-base font-bold text-center">
+              {typeof error === "string" ? error : error.message}
               {error.remainingAttempts !== undefined && (
                 <div className="mt-1">
                   남은 시도 횟수: {error.remainingAttempts}회

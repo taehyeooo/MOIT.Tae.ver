@@ -1,15 +1,7 @@
 import "./App.css";
-
-import React, { useEffect, useState } from "react";
-import {
-  createBrowserRouter,
-  RouterProvider,
-  Outlet,
-  Navigate,
-  useRouteError,
-  useNavigate,
-} from "react-router-dom";
-import axios from "axios";
+import React from "react";
+import { Routes, Route, Navigate, Outlet } from "react-router-dom";
+import { useAuth } from "./context/AuthContext.jsx"; // 1단계에서 만든 useAuth 훅 사용
 
 // --- 페이지 및 컴포넌트 임포트 ---
 import MainPage from "./Page/MainPage/MainPage";
@@ -22,9 +14,7 @@ import AdminLogin from "./Page/Admin/AdminLogin";
 import Footer from "./Components/Footer/Footer";
 import Navbar from "./Components/Navbar/Navbar";
 
-// --- 컴포넌트 정의 ---
-
-// 로그인 성공 후 이동할 관리자 대시보드 (임시)
+// --- 임시 관리자 대시보드 ---
 const AdminPosts = () => (
   <div className="min-h-screen bg-gray-100 flex items-center justify-center">
     <div className="text-center">
@@ -34,113 +24,65 @@ const AdminPosts = () => (
   </div>
 );
 
-// 에러 발생 시 보여줄 페이지
-function ErrorPage() {
-  const error = useRouteError();
-  console.error(error);
+// --- 라우트 보호 로직 ---
+// 1. 비로그인 사용자만 접근 가능한 라우트 (예: 로그인 페이지)
+const GuestRoute = () => {
+  const { user } = useAuth();
+  // 로그인 상태가 아니면 자식 컴포넌트(로그인 페이지)를 보여주고,
+  // 로그인 상태이면 관리자 대시보드로 보냅니다.
+  return !user ? <Outlet /> : <Navigate to="/admin/posts" replace />;
+};
 
-  return (
-    <div className="min-h-screen flex flex-col items-center justify-center text-center px-4">
-      <h1 className="text-6xl font-bold text-red-500">Oops!</h1>
-      <p className="mt-4 text-2xl">죄송합니다. 예상치 못한 오류가 발생했습니다.</p>
-      <p className="mt-2 text-lg text-gray-600">
-        <i>{error.statusText || error.message}</i>
-      </p>
-    </div>
-  );
-}
+// 2. 로그인한 사용자만 접근 가능한 라우트 (예: 관리자 대시보드)
+const ProtectedRoute = () => {
+  const { user } = useAuth();
+  // 로그인 상태이면 자식 컴포넌트(대시보드)를 보여주고,
+  // 아니면 로그인 페이지로 보냅니다.
+  return user ? <Outlet /> : <Navigate to="/admin" replace />;
+};
 
-// IP 체크와 인증 상태를 모두 확인하는 보호막 컴포넌트
-function AuthRedirectRoute() {
-  const [status, setStatus] = useState("loading"); // 'loading', 'authenticated', 'guest'
-  const navigate = useNavigate();
+// --- 레이아웃 컴포넌트 ---
+const MainLayout = () => (
+  <>
+    <Navbar />
+    <Outlet />
+    <Footer />
+  </>
+);
 
-  useEffect(() => {
-    const checkAccess = async () => {
-      // 1. IP 블랙리스트 확인
-      try {
-        const ipResponse = await axios.get(
-          "http://localhost:3000/api/check-ip",
-          { withCredentials: true }
-        );
-        if (!ipResponse.data.allowed) {
-          alert("접근이 거부되었습니다.");
-          navigate("/");
-          return;
-        }
-      } catch (error) {
-        console.error("IP 체크 오류:", error);
-        alert("IP 확인 중 문제가 발생했습니다.");
-        navigate("/");
-        return;
-      }
+// --- 메인 앱 컴포넌트 ---
+function App() {
+  const { loading } = useAuth(); // 전역 로딩 상태를 가져옵니다.
 
-      // 2. IP 확인 후 토큰 인증
-      try {
-        await axios.post(
-          "http://localhost:3000/api/auth/verify-token",
-          {},
-          { withCredentials: true }
-        );
-        // 인증 성공 (이미 로그인 됨)
-        setStatus("authenticated");
-      } catch (error) {
-        // 인증 실패 (로그인 필요)
-        console.log("토큰 인증 실패 (로그인 페이지로 이동): ", error);
-        setStatus("guest");
-      }
-    };
-    checkAccess();
-  }, [navigate]);
-
-  if (status === "loading") {
-    return <div className="min-h-screen flex items-center justify-center">보안 확인 중...</div>;
+  // 최초 인증 확인 중에는 로딩 화면을 표시합니다.
+  if (loading) {
+    return <div className="min-h-screen flex items-center justify-center">보안 및 인증 상태 확인 중...</div>;
   }
 
-  // 이미 로그인 되어있으면 /admin/posts로, 아니면 로그인 페이지(<Outlet/>)를 보여줌
-  return status === "authenticated" ? <Navigate to="/admin/posts" replace /> : <Outlet />;
-}
-
-// 일반 사용자 페이지 레이아웃
-function Layout() {
   return (
-    <>
-      <Navbar />
-      <Outlet />
-      <Footer />
-    </>
+    <Routes>
+      {/* 일반 사용자 페이지 경로 */}
+      <Route path="/" element={<MainLayout />}>
+        <Route index element={<MainPage />} />
+        <Route path="about" element={<About />} />
+        <Route path="leadership" element={<Leadership />} />
+        <Route path="board" element={<Board />} />
+        <Route path="our-services" element={<Services />} />
+        <Route path="contact" element={<Contact />} />
+      </Route>
+
+      {/* 관리자 페이지 경로 */}
+      <Route path="/admin" element={<GuestRoute />}>
+        <Route index element={<AdminLogin />} />
+      </Route>
+      <Route path="/admin/posts" element={<ProtectedRoute />}>
+         <Route index element={<AdminPosts />} />
+      </Route>
+
+      {/* 정의되지 않은 모든 경로는 메인 페이지로 보냅니다. */}
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   );
-}
-
-// --- 라우터 설정 ---
-const router = createBrowserRouter([
-  {
-    path: "/",
-    element: <Layout />,
-    errorElement: <ErrorPage />,
-    children: [
-      { index: true, element: <MainPage /> },
-      { path: "/about", element: <About /> },
-      { path: "/leadership", element: <Leadership /> },
-      { path: "/board", element: <Board /> },
-      { path: "/our-services", element: <Services /> },
-      { path: "/contact", element: <Contact /> },
-    ],
-  },
-  {
-    path: "/admin",
-    element: <AuthRedirectRoute />, // 보호막으로 감싸기
-    children: [{ index: true, element: <AdminLogin /> }],
-  },
-  {
-    path: "/admin/posts",
-    element: <AdminPosts />,
-  },
-]);
-
-function App() {
-  return <RouterProvider router={router} />;
 }
 
 export default App;
-
