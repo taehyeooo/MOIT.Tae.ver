@@ -1,7 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react"; // 👈 1. useEffect를 import 합니다.
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import { useAuth } from "../../context/AuthContext.jsx"; // 1단계에서 만든 AuthContext.jsx를 사용하도록 경로를 수정합니다.
+import { useAuth } from "../../context/AuthContext.jsx";
 
 const AdminLogin = () => {
   const [formData, setFormData] = useState({
@@ -10,37 +10,36 @@ const AdminLogin = () => {
   });
   const [error, setError] = useState(null);
   const navigate = useNavigate();
-  const { setUser } = useAuth(); // AuthContext에서 setUser 함수를 가져옵니다.
+  const { user, setUser } = useAuth(); // 👈 2. user 상태도 가져옵니다.
 
-  // 사용자가 입력 필드에 타이핑할 때마다 state를 업데이트하는 함수
-  const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
-  };
+  // 👈 3. 이 useEffect Hook을 추가합니다.
+  // user 상태가 변경될 때마다 이 코드가 실행됩니다.
+  useEffect(() => {
+    // user 상태가 null이 아니고 실제 사용자 정보가 들어왔다면,
+    // 로그인이 성공적으로 완료된 것이므로 관리자 페이지로 이동시킵니다.
+    if (user) {
+      navigate("/admin/posts", { replace: true });
+    }
+  }, [user, navigate]); // user 또는 navigate가 변경될 때 실행됩니다.
 
-  // '로그인' 버튼을 눌렀을 때 실행되는 함수
+
   const handleSubmit = async (e) => {
-    e.preventDefault(); // 페이지가 새로고침되는 것을 방지
-    setError(null); // 이전 에러 메시지 초기화
+    e.preventDefault();
+    setError(null);
 
     try {
-      // 백엔드 로그인 API로 POST 요청
       const response = await axios.post(
         "http://localhost:3000/api/auth/login",
         formData,
-        { withCredentials: true } // 쿠키를 주고받기 위한 필수 설정
+        { withCredentials: true }
       );
 
-      // 응답 데이터에 user 정보가 있으면 로그인 성공
       if (response.data.user) {
-        alert("로그인에 성공했습니다.");
-        setUser(response.data.user); // 전역 상태에 사용자 정보 저장
-        navigate("/admin/posts", { replace: true }); // 관리자 대시보드로 이동
+        // 여기서는 setUser로 상태만 업데이트합니다.
+        // 페이지 이동은 위의 useEffect가 알아서 처리해줍니다.
+        setUser(response.data.user);
       }
     } catch (err) {
-      // 백엔드에서 보낸 에러 메시지를 화면에 표시
       const errorMessage = err.response?.data?.message || "로그인에 실패했습니다.";
       const remainingAttempts = err.response?.data?.remainingAttempts;
       setError({
@@ -62,7 +61,6 @@ const AdminLogin = () => {
           </p>
         </div>
 
-        {/* form에 onSubmit 이벤트 핸들러 연결 */}
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           <div className="space-y-4">
             <div>

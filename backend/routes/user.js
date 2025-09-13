@@ -14,14 +14,13 @@ router.post('/signup', async (req, res) => {
   try {
     const { username, password } = req.body;
 
-    // 입력 값 검증
     if (!username || !password) {
       return res.status(400).json({ message: '사용자 이름과 비밀번호를 모두 입력해주세요.' });
     }
 
     const existingUser = await User.findOne({ username });
     if (existingUser) {
-      return res.status(409).json({ message: '이미 존재하는 사용자입니다.' }); // 409 Conflict: 리소스 충돌
+      return res.status(409).json({ message: '이미 존재하는 사용자입니다.' });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -48,20 +47,17 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ message: '사용자 이름과 비밀번호를 모두 입력해주세요.' });
     }
 
+    // 데이터베이스에서 사용자 정보를 가져올 때, password 필드도 함께 가져옵니다.
     const user = await User.findOne({ username }).select('+password');
     if (!user) {
       return res.status(401).json({ message: '아이디 또는 비밀번호가 올바르지 않습니다.' });
     }
 
     if (!user.isActive) {
-        return res.status(403).json({ message: '비활성화된 계정입니다. 관리자에게 문의하세요.' }); // 403 Forbidden: 접근 금지
+        return res.status(403).json({ message: '비활성화된 계정입니다. 관리자에게 문의하세요.' });
     }
 
-    if (user.isLoggedIn) {
-        // 필요 시, 이 부분에서 기존 로그인 세션을 무효화하는 로직을 추가할 수 있습니다.
-        // return res.status(409).json({ message: '이미 다른 기기에서 로그인되어 있습니다.' });
-    }
-
+    // bcrypt.compare를 사용하여 입력된 비밀번호와 DB의 해시된 비밀번호를 비교합니다.
     const isValidPassword = await bcrypt.compare(password, user.password);
     if (!isValidPassword) {
       user.failedLoginAttempts += 1;
@@ -77,23 +73,22 @@ router.post('/login', async (req, res) => {
 
       await user.save();
       return res.status(401).json({
-        message: '비밀번호가 일치하지 않습니다.',
+        message: '아이디 또는 비밀번호가 올바르지 않습니다.', // 메시지를 통일하여 보안 강화
         remainingAttempts: 5 - user.failedLoginAttempts,
       });
     }
-
+    
     // 로그인 성공 시
     user.failedLoginAttempts = 0;
     user.lastLoginAttempt = new Date();
-    user.isLoggedIn = true;
+    user.isLoggedIn = true; // 로그인 상태를 true로 변경
     
-    // IP 주소 기록
     try {
       const response = await axios.get("https://api.ipify.org?format=json");
       user.ipAddress = response.data.ip;
     } catch (ipError) {
       console.error("IP 주소를 가져오는 중 오류 발생:", ipError.message);
-      user.ipAddress = req.ip; // Fallback to request IP
+      user.ipAddress = req.ip;
     }
     
     await user.save();
@@ -111,6 +106,7 @@ router.post('/login', async (req, res) => {
       maxAge: 24 * 60 * 60 * 1000,
     });
 
+    // 비밀번호를 제외하고 사용자 정보를 반환합니다.
     const userWithoutPassword = user.toObject();
     delete userWithoutPassword.password;
 
@@ -134,7 +130,7 @@ router.post("/verify-token", async (req, res) => {
     try {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
       const user = await User.findById(decoded.userId);
-      if (!user || !user.isLoggedIn) { // isLoggedIn 상태도 함께 확인
+      if (!user || !user.isLoggedIn) {
         return res.status(401).json({ message: "인증 실패" });
       }
       const userWithoutPassword = user.toObject();
@@ -166,8 +162,6 @@ router.post('/logout', async (req, res) => {
     res.json({ message: '로그아웃되었습니다.' });
   } catch (error) {
     console.error('Logout Error:', error);
-    // 로그아웃 시 토큰이 유효하지 않더라도 클라이언트에서는 로그아웃 처리가 되어야 하므로
-    // 쿠키를 지우고 성공 응답을 보냅니다.
     res.clearCookie('token');
     res.status(200).json({ message: '로그아웃 처리 중 오류가 있었지만, 쿠키는 삭제되었습니다.' });
   }
@@ -179,7 +173,6 @@ router.post('/logout', async (req, res) => {
  * ---------------------------------------
  */
 router.delete('/delete/:userId', async (req, res) => {
-    // 여기에 관리자만 이 API를 호출할 수 있도록 하는 인증 미들웨어를 추가하는 것이 좋습니다.
     try {
       const user = await User.findByIdAndDelete(req.params.userId);
       if (!user) {
