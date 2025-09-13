@@ -15,15 +15,7 @@ import AdminLayout from "./Components/AdminNavbar/AdminNavbar.jsx";
 import AdminContacts from "./Page/Admin/AdminContacts.jsx";
 import Footer from "./Components/Footer/Footer.jsx";
 import Navbar from "./Components/Navbar/Navbar.jsx";
-
-// --- 임시 관리자 페이지 컴포넌트 ---
-// 게시글 관리 페이지 (임시)
-const AdminPosts = () => (
-  <div className="bg-white p-8 rounded-lg shadow-lg w-full">
-    <h1 className="text-3xl font-bold">게시글 관리</h1>
-    <p className="mt-4">이곳에서 게시글을 관리할 수 있습니다.</p>
-  </div>
-);
+import AdminPosts from "./Page/Admin/AdminPosts.jsx"; 
 
 // --- 라우트 보호 로직 ---
 

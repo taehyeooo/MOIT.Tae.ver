@@ -1,6 +1,37 @@
-import React from 'react';
+import React, { useState } from 'react'; // 👈 1. useState를 import합니다.
+import axios from 'axios';
 
 const Contact = () => {
+  // 3. status 필드를 제거하고 입력값만 관리합니다.
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    message: '',
+  });
+  // 4. alert 대신 화면에 메시지를 표시하기 위한 상태를 추가합니다.
+  const [status, setStatus] = useState({ type: '', message: '' });
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    // 2. setFormData로 오타를 수정합니다.
+    setFormData(prevState => ({ ...prevState, [name]: value }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setStatus({ type: '', message: '전송 중...' });
+
+    try {
+      const response = await axios.post('http://localhost:3000/api/contact', formData);
+      setStatus({ type: 'success', message: response.data.message });
+      setFormData({ name: '', email: '', phone: '', message: '' }); // 폼 초기화
+    } catch (error) {
+      const errorMessage = error.response?.data?.message || '문의 접수 중 오류가 발생했습니다.';
+      setStatus({ type: 'error', message: errorMessage });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white py-32">
       <div className="container mx-auto px-4 max-w-6xl">
@@ -14,46 +45,57 @@ const Contact = () => {
 
         <div className="grid lg:grid-cols-2 gap-12 items-start">
           <div>
-            <form className="bg-white rounded-2xl shadow-xl p-8">
+            <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-xl p-8">
               <div className="space-y-6">
                 <div>
-                  <label className="block text-gray-700 font-medium mb-2">이름</label>
+                  <label htmlFor="name" className="block text-gray-700 font-medium mb-2">이름</label>
                   <input
-                    type="text"
+                    type="text" id="name" name="name"
+                    value={formData.name} onChange={handleChange}
                     className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-colors"
-                    placeholder="홍길동"
-                    required
+                    placeholder="홍길동" required
                   />
                 </div>
                 <div>
-                  <label className="block text-gray-700 font-medium mb-2">이메일</label>
+                  <label htmlFor="email" className="block text-gray-700 font-medium mb-2">이메일</label>
                   <input
-                    type="email"
+                    type="email" id="email" name="email"
+                    value={formData.email} onChange={handleChange}
                     className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-colors"
-                    placeholder="example@email.com"
-                    required
+                    placeholder="example@email.com" required
                   />
                 </div>
                 <div>
-                  <label className="block text-gray-700 font-medium mb-2">연락처</label>
+                  <label htmlFor="phone" className="block text-gray-700 font-medium mb-2">연락처</label>
                   <input
-                    type="tel"
+                    type="tel" id="phone" name="phone"
+                    value={formData.phone} onChange={handleChange}
                     className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-colors"
-                    placeholder="010-1234-5678"
-                    required
+                    placeholder="010-1234-5678" required
                   />
                 </div>
                 <div>
-                  <label className="block text-gray-700 font-medium mb-2">문의 내용</label>
+                  <label htmlFor="message" className="block text-gray-700 font-medium mb-2">문의 내용</label>
                   <textarea
+                    id="message" name="message"
+                    value={formData.message} onChange={handleChange}
                     className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-colors h-40"
-                    placeholder="문의하실 내용을 자세히 적어주세요."
-                    required
+                    placeholder="문의하실 내용을 자세히 적어주세요." required
                   ></textarea>
                 </div>
+
+                {/* 4. 서버 응답 메시지를 보여줄 UI 추가 */}
+                {status.message && (
+                  <div className={`p-3 rounded-lg text-center font-semibold ${
+                    status.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                  }`}>
+                    {status.message}
+                  </div>
+                )}
+                
                 <button
-                  className="w-full bg-blue-600 text-white py-4 rounded-lg font-medium
-                    hover:bg-blue-700 transition-colors duration-300"
+                  type="submit"
+                  className="w-full bg-blue-600 text-white py-4 rounded-lg font-medium hover:bg-blue-700 transition-colors duration-300"
                 >
                   문의하기
                 </button>
@@ -103,3 +145,4 @@ const Contact = () => {
 };
 
 export default Contact;
+
