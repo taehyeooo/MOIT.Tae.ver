@@ -16,9 +16,10 @@ import AdminContacts from "./Page/Admin/AdminContacts.jsx";
 import Footer from "./Components/Footer/Footer.jsx";
 import Navbar from "./Components/Navbar/Navbar.jsx";
 import AdminPosts from "./Page/Admin/AdminPosts.jsx";
-// ❗ 1. 게시글 생성 및 수정 컴포넌트를 import 합니다.
 import AdminCreatePost from "./Page/Admin/AdminCreatePost.jsx";
 import AdminEditPost from "./Page/Admin/AdminEditPost.jsx";
+// ❗ 1. SinglePost 컴포넌트를 import 합니다. (이 파일은 다음 단계에서 생성합니다)
+import SinglePost from "./Page/SinglePost/SinglePost.jsx";
 
 // --- 라우트 보호 로직 ---
 const GuestRoute = () => {
@@ -56,6 +57,8 @@ function App() {
         <Route path="about" element={<About />} />
         <Route path="leadership" element={<Leadership />} />
         <Route path="board" element={<Board />} />
+        {/* ❗ 2. 개별 게시글을 볼 수 있는 경로를 추가합니다. */}
+        <Route path="post/:id" element={<SinglePost />} />
         <Route path="our-services" element={<Services />} />
         <Route path="contact" element={<Contact />} />
       </Route>
@@ -69,7 +72,6 @@ function App() {
       <Route path="/admin" element={<ProtectedRoute />}>
         <Route element={<AdminLayout />}>
           <Route path="posts" element={<AdminPosts />} />
-          {/* ❗ 2. 게시글 생성 및 수정 경로를 추가합니다. */}
           <Route path="posts/create" element={<AdminCreatePost />} />
           <Route path="posts/edit/:id" element={<AdminEditPost />} />
           <Route path="contacts" element={<AdminContacts />} />
@@ -83,3 +85,4 @@ function App() {
 }
 
 export default App;
+

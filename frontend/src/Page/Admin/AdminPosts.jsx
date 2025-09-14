@@ -16,7 +16,8 @@ const AdminPosts = () => {
     const fetchPosts = async () => {
       try {
         setLoading(true);
-        const response = await axios.get("http://localhost:3000/api/post", {
+        // ❗ API 경로를 백엔드(index.js)와 일치시킵니다.
+        const response = await axios.get("http://localhost:3000/api/posts", {
           withCredentials: true,
         });
         setPosts(response.data);
@@ -36,14 +37,15 @@ const AdminPosts = () => {
       text: "이 작업은 되돌릴 수 없습니다!",
       icon: 'warning',
       showCancelButton: true,
-      confirmButtonColor: '#3085d6',
-      cancelButtonColor: '#d33',
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#3085d6',
       confirmButtonText: '삭제',
       cancelButtonText: '취소'
     });
 
     if (result.isConfirmed) {
       try {
+        // ❗ 지적해주신 대로 API 경로를 '/api/posts/'로 올바르게 수정했습니다.
         await axios.delete(`http://localhost:3000/api/posts/${id}`, {
           withCredentials: true
         });
@@ -55,8 +57,6 @@ const AdminPosts = () => {
       }
     }
   };
-
-  // ❗ 이 아래에 있던 중복된 handleDelete 함수를 완전히 삭제했습니다.
 
   const filteredPosts = useMemo(() => {
     return posts.filter(post => {
@@ -200,3 +200,4 @@ const AdminPosts = () => {
 };
 
 export default AdminPosts;
+
