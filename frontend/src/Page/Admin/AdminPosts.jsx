@@ -32,27 +32,31 @@ const AdminPosts = () => {
 
   const handleDelete = async (id) => {
     const result = await Swal.fire({
-      title: '정말로 삭제하시겠습니까?',
-      text: "삭제된 데이터는 복구할 수 없습니다.",
+      title: '삭제하시겠습니까?',
+      text: "이 작업은 되돌릴 수 없습니다!",
       icon: 'warning',
       showCancelButton: true,
-      confirmButtonColor: '#d33',
-      cancelButtonColor: '#3085d6',
+      confirmButtonColor: '#3085d6',
+      cancelButtonColor: '#d33',
       confirmButtonText: '삭제',
       cancelButtonText: '취소'
     });
 
     if (result.isConfirmed) {
       try {
-        await axios.delete(`http://localhost:3000/api/post/${id}`, { withCredentials: true });
+        await axios.delete(`http://localhost:3000/api/posts/${id}`, {
+          withCredentials: true
+        });
         setPosts(posts.filter(post => post._id !== id));
-        Swal.fire('삭제 완료!', '게시글이 성공적으로 삭제되었습니다.', 'success');
+        Swal.fire('삭제완료!', '게시글이 성공적으로 삭제되었습니다.', 'success');
       } catch (error) {
-        console.error("게시글 삭제 실패:", error);
-        Swal.fire('오류', '게시글 삭제 중 문제가 발생했습니다.', 'error');
+        console.error('삭제 실패:', error);
+        Swal.fire('오류 발생!', '삭제 중 문제가 발생했습니다.', 'error');
       }
     }
   };
+
+  // ❗ 이 아래에 있던 중복된 handleDelete 함수를 완전히 삭제했습니다.
 
   const filteredPosts = useMemo(() => {
     return posts.filter(post => {
@@ -120,9 +124,11 @@ const AdminPosts = () => {
           <thead className="bg-gray-100">
             <tr>
               <th className="px-4 py-3 text-left w-[5%]">번호</th>
-              <th className="px-4 py-3 text-left w-[30%]">제목</th>
+              <th className="px-4 py-3 text-left w-[25%]">제목</th>
+              <th className="px-4 py-3 text-left w-[10%]">파일</th>
               <th className="px-4 py-3 text-left w-[15%]">작성일</th>
-              <th className="px-4 py-3 text-left w-[10%]">조회수</th>
+              <th className="px-4 py-3 text-left w-[15%]">수정일</th>
+              <th className="px-4 py-3 text-left w-[8%]">조회수</th>
               <th className="px-4 py-3 text-center w-[12%]">관리</th>
             </tr>
           </thead>
@@ -131,7 +137,25 @@ const AdminPosts = () => {
               <tr key={post._id} className="hover:bg-gray-50">
                 <td className="px-4 py-3">{post.number}</td>
                 <td className="px-4 py-3 truncate" title={post.title}>{post.title}</td>
-                <td className="px-4 py-3">{new Date(post.createdAt).toLocaleDateString()}</td>
+                <td className="px-4 py-3 text-center">
+                  {post.fileUrl && post.fileUrl.length > 0 ? (
+                    post.fileUrl.map((url, index) => (
+                      <a 
+                        key={index}
+                        href={url} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-blue-500 hover:underline mr-2"
+                      >
+                        파일{index + 1}
+                      </a>
+                    ))
+                  ) : (
+                    "없음"
+                  )}
+                </td>
+                <td className="px-4 py-3">{new Date(post.createdAt).toLocaleString()}</td>
+                <td className="px-4 py-3">{new Date(post.updatedAt).toLocaleString()}</td>
                 <td className="px-4 py-3">{post.views}</td>
                 <td className="px-4 py-3">
                   <div className="flex justify-center space-x-2">

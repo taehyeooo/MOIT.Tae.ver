@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react"; // 👈 1. useEffect를 import 합니다.
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { useAuth } from "../../context/AuthContext.jsx";
@@ -10,18 +10,22 @@ const AdminLogin = () => {
   });
   const [error, setError] = useState(null);
   const navigate = useNavigate();
-  const { user, setUser } = useAuth(); // 👈 2. user 상태도 가져옵니다.
+  const { user, setUser } = useAuth();
 
-  // 👈 3. 이 useEffect Hook을 추가합니다.
-  // user 상태가 변경될 때마다 이 코드가 실행됩니다.
+  // 사용자 정보가 업데이트되면 관리자 페이지로 이동시킵니다.
   useEffect(() => {
-    // user 상태가 null이 아니고 실제 사용자 정보가 들어왔다면,
-    // 로그인이 성공적으로 완료된 것이므로 관리자 페이지로 이동시킵니다.
     if (user) {
       navigate("/admin/posts", { replace: true });
     }
-  }, [user, navigate]); // user 또는 navigate가 변경될 때 실행됩니다.
+  }, [user, navigate]);
 
+  // ❗ 누락되었던 handleChange 함수를 추가합니다.
+  const handleChange = (e) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value,
+    });
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -35,8 +39,8 @@ const AdminLogin = () => {
       );
 
       if (response.data.user) {
-        // 여기서는 setUser로 상태만 업데이트합니다.
-        // 페이지 이동은 위의 useEffect가 알아서 처리해줍니다.
+        // setUser를 호출하여 AuthContext의 상태를 업데이트합니다.
+        // 그러면 위의 useEffect가 이를 감지하고 페이지를 이동시킵니다.
         setUser(response.data.user);
       }
     } catch (err) {
@@ -119,3 +123,4 @@ const AdminLogin = () => {
 };
 
 export default AdminLogin;
+

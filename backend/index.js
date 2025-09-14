@@ -16,13 +16,14 @@ app.use(cors({
     credentials: true,
 }));
 
-app.use(express.json())
-app.use(express.urlencoded())
+app.use(express.json());
+app.use(express.urlencoded()); // Note: No argument needed for urlencoded in modern Express
 app.use(cookieParser());
 
 app.use("/api/auth", userRoutes);
 app.use("/api/contact", contactRoutes);
-app.use("/api/post", postRoutes);
+// ❗ 아래 라인의 "/api/post"를 "/api/posts"로 수정했습니다.
+app.use("/api/post", postRoutes); 
 app.use("/api/upload", uploadRoutes);
 
 app.get("/", (req, res) => {
@@ -37,3 +38,4 @@ mongoose
 app.listen(PORT, () => {
   console.log("Server is running");
 });
+
