@@ -1,3 +1,5 @@
+
+
 const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcrypt');
@@ -7,24 +9,36 @@ const User = require('../models/User');
 
 /**
  * ---------------------------------
- * POST /api/auth/signup - 회원가입
+ * POST /api/auth/signup - 회원가입 (수정됨)
  * ---------------------------------
  */
 router.post('/signup', async (req, res) => {
   try {
-    const { username, password } = req.body;
+    // <<< 수정: name, nickname, email 필드를 추가로 받습니다.
+    const { username, password, name, nickname, email } = req.body;
 
-    if (!username || !password) {
-      return res.status(400).json({ message: '사용자 이름과 비밀번호를 모두 입력해주세요.' });
+    // <<< 수정: 모든 필드가 있는지 확인합니다.
+    if (!username || !password || !name || !nickname || !email) {
+      return res.status(400).json({ message: '모든 필수 정보를 입력해주세요.' });
     }
 
-    const existingUser = await User.findOne({ username });
+    // <<< 추가: 아이디, 닉네임, 이메일 중복 확인 로직
+    const existingUser = await User.findOne({ $or: [{ username }, { nickname }, { email }] });
     if (existingUser) {
-      return res.status(409).json({ message: '이미 존재하는 사용자입니다.' });
+        if (existingUser.username === username) {
+            return res.status(409).json({ message: '이미 사용 중인 아이디입니다.' });
+        }
+        if (existingUser.nickname === nickname) {
+            return res.status(409).json({ message: '이미 사용 중인 닉네임입니다.' });
+        }
+        if (existingUser.email === email) {
+            return res.status(409).json({ message: '이미 사용 중인 이메일입니다.' });
+        }
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const user = new User({ username, password: hashedPassword });
+    // <<< 수정: 새로운 필드를 포함하여 User 모델을 생성합니다.
+    const user = new User({ username, password: hashedPassword, name, nickname, email });
     await user.save();
 
     res.status(201).json({ message: '회원가입이 완료되었습니다.' });
@@ -47,7 +61,6 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ message: '사용자 이름과 비밀번호를 모두 입력해주세요.' });
     }
 
-    // 데이터베이스에서 사용자 정보를 가져올 때, password 필드도 함께 가져옵니다.
     const user = await User.findOne({ username }).select('+password');
     if (!user) {
       return res.status(401).json({ message: '아이디 또는 비밀번호가 올바르지 않습니다.' });
@@ -57,7 +70,6 @@ router.post('/login', async (req, res) => {
         return res.status(403).json({ message: '비활성화된 계정입니다. 관리자에게 문의하세요.' });
     }
 
-    // bcrypt.compare를 사용하여 입력된 비밀번호와 DB의 해시된 비밀번호를 비교합니다.
     const isValidPassword = await bcrypt.compare(password, user.password);
     if (!isValidPassword) {
       user.failedLoginAttempts += 1;
@@ -73,15 +85,14 @@ router.post('/login', async (req, res) => {
 
       await user.save();
       return res.status(401).json({
-        message: '아이디 또는 비밀번호가 올바르지 않습니다.', // 메시지를 통일하여 보안 강화
+        message: '아이디 또는 비밀번호가 올바르지 않습니다.',
         remainingAttempts: 5 - user.failedLoginAttempts,
       });
     }
     
-    // 로그인 성공 시
     user.failedLoginAttempts = 0;
     user.lastLoginAttempt = new Date();
-    user.isLoggedIn = true; // 로그인 상태를 true로 변경
+    user.isLoggedIn = true;
     
     try {
       const response = await axios.get("https://api.ipify.org?format=json");
@@ -94,7 +105,8 @@ router.post('/login', async (req, res) => {
     await user.save();
 
     const token = jwt.sign(
-      { userId: user._id, username: user.username },
+      // <<< 수정: 토큰에 nickname도 포함시켜 Navbar에서 바로 사용할 수 있도록 합니다.
+      { userId: user._id, username: user.username, nickname: user.nickname },
       process.env.JWT_SECRET,
       { expiresIn: '24h' }
     );
@@ -106,7 +118,6 @@ router.post('/login', async (req, res) => {
       maxAge: 24 * 60 * 60 * 1000,
     });
 
-    // 비밀번호를 제외하고 사용자 정보를 반환합니다.
     const userWithoutPassword = user.toObject();
     delete userWithoutPassword.password;
 
@@ -140,7 +151,6 @@ router.post("/verify-token", async (req, res) => {
       res.status(401).json({ message: "유효하지 않은 토큰입니다." });
     }
 });
-
 
 /**
  * ---------------------------------

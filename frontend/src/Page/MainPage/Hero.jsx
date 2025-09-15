@@ -1,120 +1,82 @@
 import React from "react";
-import HeroImage from "../../assets/Image1.jpg";
+import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
+// 오른쪽 이미지 영역에 어울리는 이미지를 임시로 지정했습니다.
+// 원하시는 다른 이미지로 교체해서 사용하세요. (예: import RunningImage from "../../assets/running.jpg";)
+import HeroImage from "../../assets/home1Run.jpg"; 
 
 const Hero = () => {
-  const textVariant = {
-    hidden: { opacity: 0, y: 50 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.8, delay: 0.3 } },
-  };
-
-  const buttonVariant = {
-    hidden: { opacity: 0, y: 50 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.8, delay: 0.5 } },
-  };
-
-  const imageVariant = {
-    hidden: { opacity: 0, scale: 0.95 },
+  const containerVariants = {
+    hidden: { opacity: 0 },
     visible: {
       opacity: 1,
-      scale: 1,
-      transition: { duration: 0.8, delay: 0.7 },
+      transition: {
+        staggerChildren: 0.3,
+      },
     },
   };
 
-  const statusVariant = {
-    hidden: { opacity: 0, y: 50 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.8, delay: 1 } },
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.8 } },
   };
 
   return (
-    <div className="relative min-h-[110vh] bg-gradient-to-b from-gray-50 to-white pb-0">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-28 lg:py-36">
-        <div className="flex flex-col lg:flex-row items-center justify-between gap-12">
-          <div className="flex-1 text-center lg:text-left">
-            <motion.h1
-              className="text-3xl sm:text-4xl 2xl:text-7xl font-bold text-gray-900 leading-tight mb-6 lg:mb-12"
-              initial="hidden"
-              animate="visible"
-              variants={textVariant}
-            >
-              태양광 설비 전문가와 함께
-              <motion.span
-                className="block text-blue-600 mt-2 lg:mt-6"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.8, delay: 0.5 }}
-              >
-                미래를 만들어갑니다.
-              </motion.span>
-            </motion.h1>
-            <motion.p
-              className="text-lg sm:text-xl text-gray-800 text-semibold mb-8 max-w-2xl mx-auto"
-              initial="hidden"
-              animate="visible"
-              variants={textVariant}
-            >
-              안전하고 효율적인 태양광 설비 설치부터 유지보수까지, 전문가들이
-              함께합니다.
-            </motion.p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
+    <motion.div
+      className="bg-black text-white min-h-screen flex items-center"
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+    >
+      <div className="container mx-auto px-4">
+        <div className="grid md:grid-cols-2 gap-8 items-center">
+          {/* 왼쪽 텍스트 영역 */}
+          <motion.div className="text-center md:text-left" variants={itemVariants}>
+            <h1 className="text-4xl lg:text-5xl font-bold leading-tight mb-4">
+              취미를 찾고, 사람을 만나고,
+              <br />
+              함께 즐기세요 - <span className="text-blue-500">MOIT</span>
+            </h1>
+            <p className="text-lg text-gray-300 mb-8">
+              AI 기반 취미 추천 서비스와 모임을 만들고 함께 즐겨보세요.
+            </p>
+            <Link to="/about">
               <motion.button
-                className="px-8 py-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-300 text-lg font-semibold shadow-lg hover:shadow-xl"
-                initial="hidden"
-                animate="visible"
-                variants={buttonVariant}
+                className="px-6 py-3 bg-transparent border border-white rounded-full hover:bg-blue-500 hover:border-blue-500 transition-colors duration-300 flex items-center gap-2 mx-auto md:mx-0"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
               >
-                상담 신청하기
+                자세히 보기
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M17 8l4 4m0 0l-4 4m4-4H3"
+                  />
+                </svg>
               </motion.button>
-              <motion.button
-                className="px-8 py-4 bg-white text-blue-600 rounded-lg border-2 border-blue-600 hover:bg-blue-50 transition-colors duration-300 text-lg font-semibold"
-                initial="hidden"
-                animate="visible"
-                variants={buttonVariant}
-              >
-                더 알아보기
-              </motion.button>
-            </div>
-          </div>
-          <motion.div
-            className="flex-1 w-full max-w-2xl lg:max-w-none"
-            initial="hidden"
-            animate="visible"
-            variants={imageVariant}
-          >
-            <div className="relative">
-              <img
-                src={HeroImage}
-                className="relative rounded-2xl shadow-2xl w-full object-cover transform hover:scale-[1.02] transition-transform duration-300"
-              />
-            </div>
+            </Link>
+          </motion.div>
+
+          {/* 오른쪽 이미지 영역 */}
+          <motion.div variants={itemVariants}>
+            <img
+              src={HeroImage}
+              alt="Hobby activity"
+              className="rounded-lg w-full h-auto object-cover"
+              style={{ maxHeight: '70vh' }}
+            />
           </motion.div>
         </div>
       </div>
-      <div className="container mx-auto px-4">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 max-w-4xl mx-auto">
-          {[
-            { number: "1,200+", label: "설치 완료" },
-            { number: "98%", label: "고객 만족도" },
-            { number: "15년+", label: "업계 경력" },
-            { number: "24/7", label: "기술 지원" },
-          ].map((stat, index) => (
-            <motion.div
-              key={index}
-              className="text-center"
-              initial="hidden"
-              animate="visible"
-              variants={statusVariant}
-            >
-              <div className="text-3xl font-bold text-blue-600">
-                {stat.number}
-              </div>
-              <div className="text-gray-900">{stat.label}</div>
-            </motion.div>
-          ))}
-        </div>
-      </div>
-    </div>
+    </motion.div>
   );
 };
 

@@ -18,8 +18,11 @@ import Navbar from "./Components/Navbar/Navbar.jsx";
 import AdminPosts from "./Page/Admin/AdminPosts.jsx";
 import AdminCreatePost from "./Page/Admin/AdminCreatePost.jsx";
 import AdminEditPost from "./Page/Admin/AdminEditPost.jsx";
-// ❗ 1. SinglePost 컴포넌트를 import 합니다. (이 파일은 다음 단계에서 생성합니다)
 import SinglePost from "./Page/SinglePost/SinglePost.jsx";
+import HobbyRecommend from "./Page/HobbyRecommend/HobbyRecommend.jsx";
+import Login from './Page/Auth/Login.jsx';
+import Signup from './Page/Auth/Signup.jsx';
+
 
 // --- 라우트 보호 로직 ---
 const GuestRoute = () => {
@@ -51,24 +54,26 @@ function App() {
 
   return (
     <Routes>
-      {/* 일반 사용자 페이지 경로 */}
+      {/* Navbar와 Footer가 있는 일반 페이지 경로 */}
       <Route path="/" element={<MainLayout />}>
         <Route index element={<MainPage />} />
         <Route path="about" element={<About />} />
+        <Route path="recommend" element={<HobbyRecommend />} />
         <Route path="leadership" element={<Leadership />} />
         <Route path="board" element={<Board />} />
-        {/* ❗ 2. 개별 게시글을 볼 수 있는 경로를 추가합니다. */}
         <Route path="post/:id" element={<SinglePost />} />
         <Route path="our-services" element={<Services />} />
         <Route path="contact" element={<Contact />} />
       </Route>
 
-      {/* 관리자 로그인 경로 */}
+      {/* Navbar와 Footer가 없는 단독 페이지 경로 */}
+      <Route path="/login" element={<Login />} />
+      <Route path="/signup" element={<Signup />} />
+
+      {/* 관리자 관련 경로 */}
       <Route path="/admin" element={<GuestRoute />}>
         <Route index element={<AdminLogin />} />
       </Route>
-
-      {/* 관리자 페이지 전용 경로 */}
       <Route path="/admin" element={<ProtectedRoute />}>
         <Route element={<AdminLayout />}>
           <Route path="posts" element={<AdminPosts />} />
@@ -77,12 +82,10 @@ function App() {
           <Route path="contacts" element={<AdminContacts />} />
         </Route>
       </Route>
-
-      {/* 정의되지 않은 모든 경로는 메인 페이지로 보냅니다. */}
+      
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }
 
 export default App;
-
