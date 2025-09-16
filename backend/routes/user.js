@@ -1,28 +1,25 @@
-
-
 const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const axios = require('axios');
 const User = require('../models/User');
+const Meeting = require('../models.Meeting');
+const { verifyToken } = require('../utils/auth');
 
 /**
  * ---------------------------------
- * POST /api/auth/signup - 회원가입 (수정됨)
+ * POST /api/auth/signup - 회원가입
  * ---------------------------------
  */
 router.post('/signup', async (req, res) => {
   try {
-    // <<< 수정: name, nickname, email 필드를 추가로 받습니다.
     const { username, password, name, nickname, email } = req.body;
 
-    // <<< 수정: 모든 필드가 있는지 확인합니다.
     if (!username || !password || !name || !nickname || !email) {
       return res.status(400).json({ message: '모든 필수 정보를 입력해주세요.' });
     }
 
-    // <<< 추가: 아이디, 닉네임, 이메일 중복 확인 로직
     const existingUser = await User.findOne({ $or: [{ username }, { nickname }, { email }] });
     if (existingUser) {
         if (existingUser.username === username) {
@@ -37,7 +34,6 @@ router.post('/signup', async (req, res) => {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    // <<< 수정: 새로운 필드를 포함하여 User 모델을 생성합니다.
     const user = new User({ username, password: hashedPassword, name, nickname, email });
     await user.save();
 
@@ -105,7 +101,6 @@ router.post('/login', async (req, res) => {
     await user.save();
 
     const token = jwt.sign(
-      // <<< 수정: 토큰에 nickname도 포함시켜 Navbar에서 바로 사용할 수 있도록 합니다.
       { userId: user._id, username: user.username, nickname: user.nickname },
       process.env.JWT_SECRET,
       { expiresIn: '24h' }
@@ -176,6 +171,40 @@ router.post('/logout', async (req, res) => {
     res.status(200).json({ message: '로그아웃 처리 중 오류가 있었지만, 쿠키는 삭제되었습니다.' });
   }
 });
+
+/**
+ * ---------------------------------
+ * GET /api/auth/mypage - 마이페이지 데이터 조회
+ * ---------------------------------
+ */
+router.get('/mypage', verifyToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+
+    const user = await User.findById(userId).select('-password');
+    if (!user) {
+      return res.status(404).json({ message: '사용자를 찾을 수 없습니다.' });
+    }
+
+    const hostedMeetings = await Meeting.find({ host: userId }).sort({ date: -1 });
+    
+    const joinedMeetings = await Meeting.find({ 
+      participants: userId, 
+      host: { $ne: userId } 
+    }).sort({ date: -1 });
+
+    res.json({
+      user,
+      hostedMeetings,
+      joinedMeetings
+    });
+
+  } catch (error) {
+    console.error("마이페이지 데이터 조회 에러:", error);
+    res.status(500).json({ message: '서버 오류가 발생했습니다.' });
+  }
+});
+
 
 /**
  * ---------------------------------------

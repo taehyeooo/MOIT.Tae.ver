@@ -77,7 +77,11 @@ const Navbar = () => {
                             <span className={!isScrolled && isHomePage ? 'text-gray-200' : 'text-gray-700'}>
                                 환영합니다, {user.nickname || user.username}님!
                             </span>
-                            <button onClick={handleLogout} className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors">
+                            {/* 👇 --- [수정] 마이페이지 링크 추가 --- 👇 */}
+                            <Link to="/mypage" className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition-colors text-sm font-semibold">
+                                마이페이지
+                            </Link>
+                            <button onClick={handleLogout} className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors text-sm font-semibold">
                                 로그아웃
                             </button>
                         </>

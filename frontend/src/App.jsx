@@ -25,7 +25,7 @@ import Signup from './Page/Auth/Signup.jsx';
 import Meetings from './Page/Meetings/Meetings.jsx';
 import MeetingDetail from './Page/MeetingDetail/MeetingDetail.jsx';
 import CreateMeeting from './Page/CreateMeeting/CreateMeeting.jsx';
-
+import MyPage from './Page/MyPage/MyPage.jsx';
 
 // --- 라우트 보호 로직 ---
 const GuestRoute = () => {
@@ -36,6 +36,11 @@ const GuestRoute = () => {
 const ProtectedRoute = () => {
   const { user } = useAuth();
   return user ? <Outlet /> : <Navigate to="/admin" replace />;
+};
+
+const UserProtectedRoute = () => {
+  const { user } = useAuth();
+  return user ? <Outlet /> : <Navigate to="/login" replace />;
 };
 
 // --- 레이아웃 컴포넌트 ---
@@ -69,6 +74,11 @@ function App() {
         <Route path="post/:id" element={<SinglePost />} />
         <Route path="our-services" element={<Services />} />
         <Route path="contact" element={<Contact />} />
+
+        <Route element={<UserProtectedRoute />}>
+          <Route path="mypage" element={<MyPage />} />
+        </Route>
+
       </Route>
 
       <Route path="/login" element={<Login />} />

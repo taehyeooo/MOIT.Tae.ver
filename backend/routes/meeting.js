@@ -1,3 +1,5 @@
+// taehyeooo/company_website/company_website-93d9fa75866ca46845029f78b01f4790a2a872da/backend/routes/meeting.js
+
 const express = require('express');
 const router = express.Router();
 const Meeting = require('../models/Meeting');
@@ -16,7 +18,7 @@ router.get('/', async (req, res) => {
     }
 });
 
-// <<< 수정: 특정 모임 상세 정보 조회 API (비슷한 모임 추천 기능 추가)
+// 특정 모임 상세 정보 조회 API
 router.get('/:id', async (req, res) => {
     try {
         const meetingId = req.params.id;
@@ -28,15 +30,13 @@ router.get('/:id', async (req, res) => {
             return res.status(404).json({ message: '모임을 찾을 수 없습니다.' });
         }
 
-        // 현재 모임과 같은 카테고리의 다른 모임들을 3개 찾아옵니다.
         const similarMeetings = await Meeting.find({
-            category: meeting.category, // 같은 카테고리
-            _id: { $ne: meetingId }    // 현재 보고 있는 모임은 제외
+            category: meeting.category,
+            _id: { $ne: meetingId }
         })
-        .limit(3) // 최대 3개까지만
+        .limit(3)
         .populate('host', 'nickname');
 
-        // 기존 모임 정보에 'similarMeetings' 배열을 추가하여 응답
         res.json({ ...meeting.toObject(), similarMeetings });
 
     } catch (error) {
@@ -64,5 +64,31 @@ router.post('/', verifyToken, async (req, res) => {
         res.status(400).json({ message: '모임 생성에 실패했습니다.', error: error.message });
     }
 });
+
+// 👇 --- [추가] 모임 삭제 API --- 👇
+router.delete('/:id', verifyToken, async (req, res) => {
+    try {
+        const meeting = await Meeting.findById(req.params.id);
+
+        if (!meeting) {
+            return res.status(404).json({ message: '모임을 찾을 수 없습니다.' });
+        }
+
+        // 로그인한 사용자가 모임의 호스트가 아닌 경우, 삭제 권한 없음
+        if (meeting.host.toString() !== req.user.userId) {
+            return res.status(403).json({ message: '모임을 삭제할 권한이 없습니다.' });
+        }
+
+        // 모임 삭제 실행
+        await Meeting.findByIdAndDelete(req.params.id);
+        
+        res.json({ message: '모임이 성공적으로 삭제되었습니다.' });
+
+    } catch (error) {
+        console.error("모임 삭제 에러:", error);
+        res.status(500).json({ message: '서버 오류가 발생했습니다.' });
+    }
+});
+
 
 module.exports = router;
