@@ -10,8 +10,10 @@ const userRoutes = require("./routes/user");
 const contactRoutes = require("./routes/contact");
 const postRoutes = require("./routes/post");
 const uploadRoutes = require("./routes/upload");
+
 // <<< 추가: survey 라우트를 불러옵니다.
 const surveyRoutes = require("./routes/survey");
+const meetingRoutes = require("./routes/meeting");
 
 app.use(cors({
     origin: "http://localhost:5173",
@@ -28,6 +30,7 @@ app.use("/api/post", postRoutes);
 app.use("/api/upload", uploadRoutes);
 // <<< 추가: survey API 경로를 등록합니다.
 app.use("/api/survey", surveyRoutes);
+app.use("/api/meetings", meetingRoutes);
 
 app.get("/", (req, res) => {
   res.send("Hello world");

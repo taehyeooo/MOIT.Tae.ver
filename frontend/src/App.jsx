@@ -22,6 +22,9 @@ import SinglePost from "./Page/SinglePost/SinglePost.jsx";
 import HobbyRecommend from "./Page/HobbyRecommend/HobbyRecommend.jsx";
 import Login from './Page/Auth/Login.jsx';
 import Signup from './Page/Auth/Signup.jsx';
+import Meetings from './Page/Meetings/Meetings.jsx';
+import MeetingDetail from './Page/MeetingDetail/MeetingDetail.jsx';
+import CreateMeeting from './Page/CreateMeeting/CreateMeeting.jsx';
 
 
 // --- 라우트 보호 로직 ---
@@ -54,11 +57,13 @@ function App() {
 
   return (
     <Routes>
-      {/* Navbar와 Footer가 있는 일반 페이지 경로 */}
       <Route path="/" element={<MainLayout />}>
         <Route index element={<MainPage />} />
         <Route path="about" element={<About />} />
         <Route path="recommend" element={<HobbyRecommend />} />
+        <Route path="meetings" element={<Meetings />} />
+        <Route path="meetings/create" element={<CreateMeeting />} />
+        <Route path="meetings/:id" element={<MeetingDetail />} />
         <Route path="leadership" element={<Leadership />} />
         <Route path="board" element={<Board />} />
         <Route path="post/:id" element={<SinglePost />} />
@@ -66,11 +71,9 @@ function App() {
         <Route path="contact" element={<Contact />} />
       </Route>
 
-      {/* Navbar와 Footer가 없는 단독 페이지 경로 */}
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<Signup />} />
 
-      {/* 관리자 관련 경로 */}
       <Route path="/admin" element={<GuestRoute />}>
         <Route index element={<AdminLogin />} />
       </Route>
