@@ -16,6 +16,41 @@ router.get('/', async (req, res) => {
     }
 });
 
+// 마감 임박 모임 조회 API
+router.get('/closing-soon', async (req, res) => {
+    try {
+        const now = new Date();
+        const meetings = await Meeting.aggregate([
+            {
+                $match: {
+                    date: { $gte: now }, // 아직 날짜가 지나지 않았고,
+                    $expr: { $lt: [{ $size: "$participants" }, "$maxParticipants"] } // 인원이 꽉 차지 않은 모임 중에서
+                }
+            },
+            // 👇 --- [수정] 정렬 기준을 날짜가 가까운 순으로 변경했습니다. --- 👇
+            {
+                $sort: {
+                    date: 1 // 날짜 오름차순 (가장 가까운 날짜 먼저)
+                }
+            },
+            {
+                $limit: 4 // 최대 4개만 가져오기
+            }
+        ]);
+
+        const populatedMeetings = await Meeting.populate(meetings, [
+            { path: 'host', select: 'nickname' },
+            { path: 'participants', select: 'nickname' }
+        ]);
+
+        res.json(populatedMeetings);
+    } catch (error) {
+        console.error("마감 임박 모임 조회 에러:", error);
+        res.status(500).json({ message: '서버 오류가 발생했습니다.' });
+    }
+});
+
+
 // 특정 모임 상세 정보 조회 API
 router.get('/:id', async (req, res) => {
     try {
@@ -86,7 +121,7 @@ router.delete('/:id', verifyToken, async (req, res) => {
     }
 });
 
-// 👇 --- [추가] 모임 참여 신청 API --- 👇
+// 모임 참여 신청 API
 router.post('/:id/join', verifyToken, async (req, res) => {
     try {
         const meeting = await Meeting.findById(req.params.id);
@@ -113,7 +148,7 @@ router.post('/:id/join', verifyToken, async (req, res) => {
     }
 });
 
-// 👇 --- [추가] 모임 참여 취소 API --- 👇
+// 모임 참여 취소 API
 router.post('/:id/leave', verifyToken, async (req, res) => {
     try {
         const meeting = await Meeting.findById(req.params.id);

@@ -3,10 +3,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
+import { FaUsers, FaFire, FaUserPlus } from 'react-icons/fa'; // 👈 [추가] 통계 아이콘
 
 // --- 데이터 영역 ---
 
-// 모든 질문을 하나의 배열로 통합하고, 타입을 추가합니다.
 const surveyQuestions = [
     { id: 'age', type: 'choice', text: '연령대를 선택해 주세요.', options: ['10대', '20대', '30대', '40대', '50대 이상'] },
     { id: 'gender', type: 'choice', text: '성별을 선택해 주세요.', options: ['남성', '여성', '선택 안 함'] },
@@ -25,30 +25,58 @@ const surveyQuestions = [
     { id: 'fun', type: 'scale', text: '이 취미를 통해 \'무엇을 얻을 수 있는가\'보다 \'그 순간이 얼마나 즐거운가\'가 더 중요합니다.' },
 ];
 
-const hobbyDatabase = [
-  // 6.내향(1)/외향(5) 7.안정(1)/모험(5) 8.계획(5)/즉흥(1) 9.규칙(1)/창의(5) 10.성장(5)/과정(1) 11.정적(1)/동적(5) 12.수익화(5)/순수(1) 13.오프라인(1)/온라인(5) 14.전문성(1)/다양성(5) 15.목표(1)/즐거움(5)
-  { name: '밴드 합주', category: '음악', description: '동료들과 함께 음악을 만들며 스트레스를 해소하세요.', tags: ['실내', '팀 활동', '고비용'], scores: { social: 5, spontaneity: 4, planning: 2, creativity: 4, growth: 3, energy: 4, business: 3, online: 2, depth: 4, fun: 5 } },
-  { name: '코딩 동아리', category: 'IT', description: '함께 문제를 해결하고 새로운 기술을 배우는 즐거움', tags: ['실내', '팀 활동', '저비용'], scores: { social: 4, spontaneity: 2, planning: 5, creativity: 4, growth: 5, energy: 1, business: 4, online: 3, depth: 5, fun: 2 } },
-  { name: '등산', category: '운동', description: '자연 속에서 정상에 오르는 성취감을 느껴보세요.', tags: ['실외', '체력', '저비용'], scores: { social: 2, spontaneity: 3, planning: 4, creativity: 1, growth: 4, energy: 5, business: 1, online: 1, depth: 4, fun: 2 } },
-  { name: '클라이밍', category: '운동', description: '전신 근육을 사용하는 도전적인 실내 스포츠', tags: ['실내', '체력', '중비용'], scores: { social: 3, spontaneity: 4, planning: 3, creativity: 2, growth: 5, energy: 5, business: 1, online: 1, depth: 5, fun: 2 } },
-  { name: '온라인 게임', category: '게임', description: '가상 세계에서 친구들과 함께 미션을 수행하세요.', tags: ['실내', '팀 활동', '저비용'], scores: { social: 5, spontaneity: 5, planning: 2, creativity: 2, growth: 4, energy: 1, business: 2, online: 5, depth: 4, fun: 5 } },
-  { name: '콘솔 게임', category: '게임', description: '혼자 깊이 있는 스토리에 몰입하는 시간을 가져보세요.', tags: ['실내', '솔로', '고비용'], scores: { social: 1, spontaneity: 4, planning: 2, creativity: 1, growth: 2, energy: 1, business: 1, online: 4, depth: 5, fun: 5 } },
-  { name: '베이킹', category: '요리', description: '레시피를 따라 달콤한 결과물을 만들어내는 기쁨', tags: ['실내', '저비용', '선물'], scores: { social: 2, spontaneity: 2, planning: 5, creativity: 3, growth: 3, energy: 2, business: 3, online: 2, depth: 4, fun: 3 } },
-  { name: '유화 그리기', category: '미술', description: '나만의 스타일로 캔버스에 세상을 담아보세요.', tags: ['실내', '솔로', '고비용'], scores: { social: 1, spontaneity: 3, planning: 4, creativity: 5, growth: 4, energy: 1, business: 3, online: 1, depth: 5, fun: 2 } },
-  { name: '블로그/SNS', category: '창작', description: '자신만의 콘텐츠로 세상과 소통하고 영향력을 키워보세요.', tags: ['온라인', '저비용'], scores: { social: 3, spontaneity: 4, planning: 3, creativity: 5, growth: 4, energy: 1, business: 5, online: 5, depth: 3, fun: 3 } },
-  { name: 'OTT 시리즈 정주행', category: '휴식', description: '편안하게 즐기는 몰입의 시간', tags: ['실내', '솔로', '저비용'], scores: { social: 1, spontaneity: 5, planning: 1, creativity: 1, growth: 1, energy: 1, business: 1, online: 3, depth: 2, fun: 5 } },
-];
-
-const popularHobbies = [
-    { rank: 1, name: '게임', category: '취미', recommendations: '10회 추천' },
-    { rank: 2, name: '독서', category: '학습', recommendations: '10회 추천' },
-    { rank: 3, name: '요가', category: '운동', recommendations: '9회 추천' },
-    { rank: 4, name: '요리', category: '생활', recommendations: '9회 추천' },
-    { rank: 5, name: '농구', category: '운동', recommendations: '8회 추천' },
-    { rank: 6, name: '등산', category: '운동', recommendations: '8회 추천' },
-];
-
 // --- 컴포넌트 영역 ---
+
+// 👇 --- [추가] 통계 정보를 보여주는 사이드바 컴포넌트 --- 👇
+const StatsSidebar = () => {
+    const [stats, setStats] = useState(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchStats = async () => {
+            try {
+                const response = await axios.get('/api/stats');
+                setStats(response.data);
+            } catch (error) {
+                console.error("통계 데이터 로딩 실패:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchStats();
+    }, []);
+
+    const statItems = [
+        { icon: FaUsers, label: '총 모임 수', value: stats?.totalMeetings, unit: '개' },
+        { icon: FaFire, label: '가장 인기있는 카테고리', value: stats?.popularCategory, unit: '' },
+        { icon: FaUserPlus, label: '이번 주 새 멤버', value: stats?.newUsersThisWeek, unit: '명' }
+    ];
+
+    if (loading) {
+        return <div className="bg-white p-8 rounded-lg shadow-lg sticky top-32">로딩 중...</div>
+    }
+
+    return (
+        <div className="bg-white p-8 rounded-lg shadow-lg sticky top-32">
+            <h2 className="text-xl font-bold mb-4 border-b-2 border-blue-500 pb-2">MOIT 재미있는 통계</h2>
+            <div className="space-y-6 mt-6">
+                {statItems.map((item, index) => (
+                    <div key={index} className="flex items-center gap-4">
+                        <div className="flex-shrink-0 w-12 h-12 flex items-center justify-center bg-blue-100 text-blue-500 rounded-lg">
+                            <item.icon size={24} />
+                        </div>
+                        <div>
+                            <p className="font-bold text-gray-800 text-lg">{item.value} {item.unit}</p>
+                            <span className="text-sm text-gray-500">{item.label}</span>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+};
+
+
 const LoginPrompt = () => (
     <div className="text-center bg-white p-12 rounded-lg shadow-lg max-w-lg mx-auto">
         <h2 className="text-2xl font-bold mb-4 text-gray-800">로그인이 필요한 서비스입니다.</h2>
@@ -163,33 +191,21 @@ const Survey = ({ onComplete }) => {
                 </div>
             </div>
             
-            <div className="bg-white p-8 rounded-lg shadow-lg sticky top-32">
-                 <h2 className="text-xl font-bold mb-4 border-b-2 border-blue-500 pb-2">요즘 이런 취미로 많이 모여요</h2>
-                 <div className="space-y-4">
-                    {popularHobbies.map((hobby) => (
-                        <div key={hobby.rank} className="flex items-center gap-4 p-3 hover:bg-gray-50 rounded-md">
-                            <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center bg-blue-500 text-white font-bold rounded-full">{hobby.rank}</div>
-                            <div className="flex-grow">
-                                <p className="font-bold text-gray-800">{hobby.name}</p>
-                                <span className="text-sm bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{hobby.category}</span>
-                            </div>
-                            <div className="text-sm text-gray-500">{hobby.recommendations}</div>
-                        </div>
-                    ))}
-                </div>
-            </div>
+            {/* 👇 --- [수정] 기존 인기 취미 섹션을 통계 컴포넌트로 교체 --- 👇 */}
+            <StatsSidebar />
         </div>
     );
 };
 
+// ... (Results 컴포넌트는 이전과 동일)
 const Results = ({ recommendations, onReset }) => (
-    <div className="grid lg:grid-cols-5 gap-8">
-        <div className="lg:col-span-3 space-y-6">
-            <div className='flex justify-between items-center'>
-                <h2 className="text-2xl font-bold">🎉 맞춤 취미 추천</h2>
-                <button onClick={onReset} className="text-sm text-blue-600 hover:underline">다시하기</button>
-            </div>
-            <p className="text-gray-600">당신의 답변을 바탕으로 아래의 취미를 추천해드려요!</p>
+    <div className="max-w-2xl mx-auto">
+        <div className="bg-white p-8 rounded-lg shadow-lg text-center">
+             <h2 className="text-3xl font-bold mb-2 text-blue-600">🎉 맞춤 취미 추천</h2>
+             <p className="text-gray-600 mb-8">설문 결과를 바탕으로 3개의 취미를 추천해드려요!</p>
+        </div>
+
+        <div className="space-y-6 mt-8">
             {recommendations.length > 0 ? recommendations.map((hobby, index) => (
                 <motion.div
                     key={index}
@@ -198,37 +214,27 @@ const Results = ({ recommendations, onReset }) => (
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.1 }}
                 >
-                    <div className="flex justify-between items-start mb-2">
-                        <h3 className="text-xl font-bold text-gray-800">{hobby.name}</h3>
-                        <span className="bg-blue-100 text-blue-700 text-xs font-semibold px-2.5 py-1 rounded-full">{hobby.category}</span>
-                    </div>
+                    <h3 className="text-2xl font-bold text-gray-800 mb-2">{hobby.name}</h3>
                     <p className="text-gray-600 mb-4">{hobby.description}</p>
                     <div className="flex flex-wrap gap-2 mb-4">
-                        {hobby.tags.map((tag, i) => (<span key={i} className="bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded-md">{tag}</span>))}
+                        {hobby.tags.map((tag, i) => (<span key={i} className="bg-blue-100 text-blue-800 text-xs font-semibold px-3 py-1 rounded-full">{tag}</span>))}
                     </div>
-                    <div className="text-right font-bold text-blue-600">추천도: {hobby.matchRate}%</div>
+                    <div className="text-right font-bold text-blue-600 text-lg">추천도: {hobby.matchRate}%</div>
                 </motion.div>
             )) : <div className="text-center p-8 bg-white rounded-lg shadow-md">추천할 만한 취미를 찾지 못했어요.</div>}
         </div>
-        <div className="lg:col-span-2">
-            <div className="bg-white p-6 rounded-lg shadow-md sticky top-32">
-                <h2 className="text-2xl font-bold mb-4">요즘 이런 취미로 많이 모여요</h2>
-                <div className="space-y-4">
-                    {popularHobbies.map((hobby) => (
-                        <div key={hobby.rank} className="flex items-center gap-4 p-3 hover:bg-gray-50 rounded-md">
-                            <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center bg-blue-500 text-white font-bold rounded-full">{hobby.rank}</div>
-                            <div className="flex-grow">
-                                <p className="font-bold text-gray-800">{hobby.name}</p>
-                                <span className="text-sm bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{hobby.category}</span>
-                            </div>
-                            <div className="text-sm text-gray-500">{hobby.recommendations}</div>
-                        </div>
-                    ))}
-                </div>
-            </div>
+
+        <div className="text-center mt-10">
+            <button 
+                onClick={onReset} 
+                className="px-8 py-3 border-2 border-blue-500 text-blue-500 font-bold rounded-lg hover:bg-blue-50 transition-colors"
+            >
+                다시 설문하기
+            </button>
         </div>
     </div>
 );
+
 
 // --- 메인 페이지 컴포넌트 ---
 const HobbyRecommend = () => {
@@ -252,6 +258,7 @@ const HobbyRecommend = () => {
                 if (error.response && error.response.status === 404) {
                     setStep('survey');
                 } else {
+                    console.error("저장된 설문결과 로딩 실패:", error);
                     setStep('survey');
                 }
             }
@@ -259,27 +266,21 @@ const HobbyRecommend = () => {
         fetchResult();
     }, [user]);
 
-    const calculateRecommendations = (answers) => {
-        const part2Answers = Object.keys(answers).filter(key => part2Questions.some(q => q.id === key));
-        
-        return hobbyDatabase.map(hobby => {
-            let score = 0;
-            part2Answers.forEach(key => {
-                const userAnswer = answers[key];
-                const hobbyScore = hobby.scores[key];
-                if(userAnswer && hobbyScore) {
-                    score += (5 - Math.abs(userAnswer - hobbyScore));
-                }
-            });
-            const matchRate = Math.round((score / (part2Answers.length * 5)) * 100);
-            return { ...hobby, matchRate: isNaN(matchRate) ? 0 : matchRate };
-        })
-        .sort((a, b) => b.matchRate - a.matchRate)
-        .slice(0, 3);
+    const getAiRecommendations = async (answers) => {
+        console.log("AI 추천 API 호출 시뮬레이션. 전달된 답변:", answers);
+        await new Promise(resolve => setTimeout(resolve, 1000)); 
+        const exampleResults = [
+            { name: '모바일 게임', description: '스마트폰으로 즐기는 게임', tags: ['자율성/창작', '성장/숙련(유능성)', '새로운 경험(개방성)', '혼자 몰입'], matchRate: 10000 },
+            { name: 'VR 게임', description: '가상현실 장비 기반 게임', tags: ['성장/숙련(유능성)', '자율성/창작', '새로운 경험(개방성)', '혼자 몰입'], matchRate: 9754 },
+            { name: '퍼즐 게임', description: '스도쿠, 퍼즐류 게임', tags: ['자율성/창작', '성장/숙련(유능성)', '계획/꾸준함(성실성)', '혼자 몰입'], matchRate: 9643 },
+        ];
+        return exampleResults;
     };
 
+
     const handleSurveyComplete = async (answers) => {
-        const results = calculateRecommendations(answers);
+        setStep('loading');
+        const results = await getAiRecommendations(answers);
         setRecommendations(results);
 
         if (user) {
@@ -289,6 +290,7 @@ const HobbyRecommend = () => {
                 console.error("결과 저장 중 오류 발생:", error);
             }
         }
+
         setStep('results');
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
@@ -305,6 +307,7 @@ const HobbyRecommend = () => {
             case 'survey':
                 return <Survey onComplete={handleSurveyComplete} />;
             case 'results':
+                // 👇 --- [수정] 결과 페이지는 통계 사이드바를 보여주지 않도록 별도 처리 --- 👇
                 return <Results recommendations={recommendations} onReset={handleReset} />;
             default:
                 return <div className="text-center p-12 text-gray-500">사용자 정보를 확인하는 중...</div>;

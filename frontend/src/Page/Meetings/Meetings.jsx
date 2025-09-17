@@ -3,9 +3,12 @@ import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { 
     FaSmile, FaRunning, FaBook, FaPalette, FaUtensils, FaPlaneDeparture, FaHeart, 
-    FaChevronDown, FaChevronUp, FaUsers, FaSearch, FaPlus, FaUserCircle // 👈 [수정] 참여자 아이콘 추가
+    FaChevronDown, FaChevronUp, FaUsers, FaSearch, FaPlus, FaUserCircle 
 } from 'react-icons/fa';
-import defaultCoverImage from '../../assets/moitmark2.jpg'; // 👈 [추가] 기본 커버 이미지 import
+import defaultCoverImage from '../../assets/moitmark2.jpg';
+// 👇 --- [추가] 날짜 계산을 위한 라이브러리 import --- 👇
+import { formatDistanceToNowStrict } from 'date-fns';
+import { ko } from 'date-fns/locale';
 
 const categories = [
     { name: '전체', icon: FaUsers }, { name: '취미 및 여가', icon: FaSmile },
@@ -14,12 +17,10 @@ const categories = [
     { name: '여행 및 탐방', icon: FaPlaneDeparture }, { name: '봉사 및 참여', icon: FaHeart },
 ];
 
-// MeetingCard는 Link로 감싸서 클릭 시 페이지 이동을 하도록 합니다.
 const MeetingCard = ({ meeting }) => (
     <Link to={`/meetings/${meeting._id}`} className="block">
         <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-shadow duration-300 group">
             <div className="overflow-hidden">
-                {/* 👇 --- [수정] 사용자가 올린 이미지가 없으면 기본 이미지를 보여줍니다 --- 👇 */}
                 <img src={meeting.coverImage || defaultCoverImage} alt={meeting.title} className="w-full h-40 object-cover group-hover:scale-105 transition-transform duration-300" />
             </div>
             <div className="p-4">
@@ -27,7 +28,6 @@ const MeetingCard = ({ meeting }) => (
                 <p className="text-sm text-gray-600 mb-1">📍 {meeting.location}</p>
                 <p className="text-sm text-gray-600 mb-3">🗓️ {new Date(meeting.date).toLocaleDateString('ko-KR')}</p>
                 <div className="flex items-center justify-between text-sm">
-                    {/* 👇 --- [수정] 참여자 이미지를 이모지 아이콘으로 변경했습니다 --- 👇 */}
                     <div className="flex items-center -space-x-2">
                         {meeting.participants.slice(0, 3).map((p, index) => (
                              <FaUserCircle key={p._id || index} className="w-6 h-6 rounded-full border-2 border-white bg-gray-300 text-white" />
@@ -39,6 +39,71 @@ const MeetingCard = ({ meeting }) => (
         </div>
     </Link>
 );
+
+// 👇 --- [수정] 마감 임박 카드에 남은 자리 대신 남은 시간을 표시하도록 변경 --- 👇
+const SmallMeetingCard = ({ meeting }) => {
+    // 현재 시간과 모임 시간의 차이를 계산 (예: "3일 후", "12시간 후")
+    const timeLeft = formatDistanceToNowStrict(new Date(meeting.date), {
+        addSuffix: true,
+        locale: ko,
+    });
+
+    return (
+        <Link to={`/meetings/${meeting._id}`} className="block p-3 hover:bg-gray-50 rounded-md transition-colors">
+            <p className="font-bold text-gray-800 truncate">{meeting.title}</p>
+            <div className="flex justify-between items-center text-sm mt-1">
+                <p className="text-gray-500 truncate">{meeting.location}</p>
+                <p className="text-red-500 font-semibold flex-shrink-0 ml-2">
+                    {timeLeft}
+                </p>
+            </div>
+        </Link>
+    );
+};
+
+const ClosingSoonSection = () => {
+    const [meetings, setMeetings] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchClosingSoon = async () => {
+            try {
+                setLoading(true);
+                const response = await axios.get('/api/meetings/closing-soon');
+                setMeetings(response.data);
+            } catch (error) {
+                console.error("마감 임박 모임 로딩 실패:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchClosingSoon();
+    }, []);
+
+    if (loading) {
+        return (
+            <div className="bg-white p-6 rounded-lg shadow mt-8">
+                 <h2 className="text-xl font-bold mb-4">🔥 마감 임박!</h2>
+                 <p className='text-gray-500'>모임 정보를 불러오는 중...</p>
+            </div>
+        )
+    }
+
+    if (meetings.length === 0) {
+        return null;
+    }
+
+    return (
+        <div className="bg-white p-6 rounded-lg shadow mt-8">
+            <h2 className="text-xl font-bold mb-4">🔥 마감 임박!</h2>
+            <div className="space-y-2">
+                {meetings.map(meeting => (
+                    <SmallMeetingCard key={meeting._id} meeting={meeting} />
+                ))}
+            </div>
+        </div>
+    );
+};
 
 
 const Meetings = () => {
@@ -131,6 +196,8 @@ const Meetings = () => {
                                 <FaSearch className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" />
                             </div>
                         </div>
+
+                        <ClosingSoonSection />
                     </div>
                 </div>
             </div>

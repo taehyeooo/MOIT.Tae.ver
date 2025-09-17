@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { HiMenu, HiX } from "react-icons/hi";
-import { useAuth } from "../../context/AuthContext"; // 1. useAuth import
-import axios from "axios"; // 1. axios import
+import { useAuth } from "../../context/AuthContext.jsx";
+import axios from "axios";
 
+// 👇 --- [수정] '커뮤니티' 메뉴를 '문의하기'로 변경하고 경로를 '/contact'로 수정했습니다. --- 👇
 const menuItems = [
   { path: "/about", label: "소개" },
   { path: "/recommend", label: "취미 추천" },
   { path: "/meetings", label: "모임" },
-  { path: "/community", label: "커뮤니티" },
+  { path: "/contact", label: "문의하기" },
 ];
 
 const MenuItem = ({ path, label, onClick, isScrolled, isHomePage, isActive }) => (
@@ -27,8 +28,8 @@ const Navbar = () => {
     const [isOpen, setIsOpen] = useState(false);
     const [isScrolled, setIsScrolled] = useState(false);
     const location = useLocation();
-    const navigate = useNavigate(); // 2. useNavigate 추가
-    const { user, setUser } = useAuth(); // 2. AuthContext에서 user와 setUser 가져오기
+    const navigate = useNavigate();
+    const { user, setUser } = useAuth();
 
     const isHomePage = location.pathname === "/";
     const toggleMenu = () => setIsOpen(!isOpen);
@@ -39,15 +40,14 @@ const Navbar = () => {
         return () => window.removeEventListener("scroll", handleScroll);
     }, []);
 
-    // 3. 로그아웃 핸들러 함수 추가
     const handleLogout = async () => {
         try {
             await axios.post('/api/auth/logout', {}, { withCredentials: true });
-            setUser(null); // 사용자 상태 null로 변경
-            navigate('/'); // 홈페이지로 이동
+            setUser(null);
+            navigate('/');
         } catch (error) {
             console.error("Logout failed:", error);
-            setUser(null); // 에러가 발생해도 로그아웃 처리
+            setUser(null);
             navigate('/');
         }
     };
@@ -69,15 +69,12 @@ const Navbar = () => {
                     </ul>
                 </div>
 
-                {/* 4. 로그인 상태에 따라 UI를 동적으로 변경 */}
                 <div className="hidden lg:flex items-center gap-4">
                     {user ? (
-                        // 로그인 했을 때 보여줄 UI
                         <>
                             <span className={!isScrolled && isHomePage ? 'text-gray-200' : 'text-gray-700'}>
                                 환영합니다, {user.nickname || user.username}님!
                             </span>
-                            {/* 👇 --- [수정] 마이페이지 링크 추가 --- 👇 */}
                             <Link to="/mypage" className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition-colors text-sm font-semibold">
                                 마이페이지
                             </Link>
@@ -86,7 +83,6 @@ const Navbar = () => {
                             </button>
                         </>
                     ) : (
-                        // 로그인 안 했을 때 보여줄 UI
                         <>
                             <Link to="/login" className={!isScrolled && isHomePage ? 'hover:text-gray-300' : 'hover:text-gray-700'}>
                                 로그인
