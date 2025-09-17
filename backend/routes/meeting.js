@@ -1,5 +1,3 @@
-// taehyeooo/company_website/company_website-93d9fa75866ca46845029f78b01f4790a2a872da/backend/routes/meeting.js
-
 const express = require('express');
 const router = express.Router();
 const Meeting = require('../models/Meeting');
@@ -65,7 +63,7 @@ router.post('/', verifyToken, async (req, res) => {
     }
 });
 
-// 👇 --- [추가] 모임 삭제 API --- 👇
+// 모임 삭제 API
 router.delete('/:id', verifyToken, async (req, res) => {
     try {
         const meeting = await Meeting.findById(req.params.id);
@@ -74,12 +72,10 @@ router.delete('/:id', verifyToken, async (req, res) => {
             return res.status(404).json({ message: '모임을 찾을 수 없습니다.' });
         }
 
-        // 로그인한 사용자가 모임의 호스트가 아닌 경우, 삭제 권한 없음
         if (meeting.host.toString() !== req.user.userId) {
             return res.status(403).json({ message: '모임을 삭제할 권한이 없습니다.' });
         }
 
-        // 모임 삭제 실행
         await Meeting.findByIdAndDelete(req.params.id);
         
         res.json({ message: '모임이 성공적으로 삭제되었습니다.' });
@@ -90,5 +86,59 @@ router.delete('/:id', verifyToken, async (req, res) => {
     }
 });
 
+// 👇 --- [추가] 모임 참여 신청 API --- 👇
+router.post('/:id/join', verifyToken, async (req, res) => {
+    try {
+        const meeting = await Meeting.findById(req.params.id);
+        if (!meeting) {
+            return res.status(404).json({ message: '모임을 찾을 수 없습니다.' });
+        }
+        if (meeting.participants.length >= meeting.maxParticipants) {
+            return res.status(400).json({ message: '모집 인원이 가득 찼습니다.' });
+        }
+        if (meeting.participants.includes(req.user.userId)) {
+            return res.status(400).json({ message: '이미 참여하고 있는 모임입니다.' });
+        }
+        meeting.participants.push(req.user.userId);
+        await meeting.save();
+        
+        const updatedMeeting = await Meeting.findById(req.params.id)
+            .populate('host', 'nickname')
+            .populate('participants', 'nickname');
+
+        res.json({ message: '모임 참여 신청이 완료되었습니다.', meeting: updatedMeeting });
+    } catch (error) {
+        console.error("모임 참여 에러:", error);
+        res.status(500).json({ message: '서버 오류가 발생했습니다.' });
+    }
+});
+
+// 👇 --- [추가] 모임 참여 취소 API --- 👇
+router.post('/:id/leave', verifyToken, async (req, res) => {
+    try {
+        const meeting = await Meeting.findById(req.params.id);
+        if (!meeting) {
+            return res.status(404).json({ message: '모임을 찾을 수 없습니다.' });
+        }
+        if (meeting.host.toString() === req.user.userId) {
+            return res.status(400).json({ message: '호스트는 모임을 떠날 수 없습니다. 모임을 삭제해주세요.' });
+        }
+        const participantIndex = meeting.participants.indexOf(req.user.userId);
+        if (participantIndex === -1) {
+            return res.status(400).json({ message: '참여하고 있는 모임이 아닙니다.' });
+        }
+        meeting.participants.splice(participantIndex, 1);
+        await meeting.save();
+        
+        const updatedMeeting = await Meeting.findById(req.params.id)
+            .populate('host', 'nickname')
+            .populate('participants', 'nickname');
+            
+        res.json({ message: '모임 참여가 취소되었습니다.', meeting: updatedMeeting });
+    } catch (error) {
+        console.error("모임 나가기 에러:", error);
+        res.status(500).json({ message: '서버 오류가 발생했습니다.' });
+    }
+});
 
 module.exports = router;

@@ -91,9 +91,13 @@ const MyPage = () => {
                             <p className="text-gray-500 mt-1">오늘도 새로운 취미를 찾아보세요!</p>
                         </div>
                     </div>
-                    <button className="bg-gray-200 text-gray-700 font-semibold px-5 py-2 rounded-lg hover:bg-gray-300 transition-colors">
+                    {/* 👇 --- [확인 3] 버튼이 <Link>로 되어 있고, to="/profile/edit" 경로가 맞는지 확인해주세요. --- 👇 */}
+                    <Link 
+                        to="/profile/edit" 
+                        className="bg-gray-200 text-gray-700 font-semibold px-5 py-2 rounded-lg hover:bg-gray-300 transition-colors"
+                    >
                         프로필 수정
-                    </button>
+                    </Link>
                 </div>
                 
                 {/* 탭 메뉴 */}

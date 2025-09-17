@@ -3,8 +3,9 @@ import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { 
     FaSmile, FaRunning, FaBook, FaPalette, FaUtensils, FaPlaneDeparture, FaHeart, 
-    FaChevronDown, FaChevronUp, FaUsers, FaSearch, FaPlus 
+    FaChevronDown, FaChevronUp, FaUsers, FaSearch, FaPlus, FaUserCircle // 👈 [수정] 참여자 아이콘 추가
 } from 'react-icons/fa';
+import defaultCoverImage from '../../assets/moitmark2.jpg'; // 👈 [추가] 기본 커버 이미지 import
 
 const categories = [
     { name: '전체', icon: FaUsers }, { name: '취미 및 여가', icon: FaSmile },
@@ -18,16 +19,18 @@ const MeetingCard = ({ meeting }) => (
     <Link to={`/meetings/${meeting._id}`} className="block">
         <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-shadow duration-300 group">
             <div className="overflow-hidden">
-                <img src={meeting.coverImage || 'https://images.unsplash.com/photo-1529641484336-ef35140bab06?q=80&w=2070&auto=format&fit=crop'} alt={meeting.title} className="w-full h-40 object-cover group-hover:scale-105 transition-transform duration-300" />
+                {/* 👇 --- [수정] 사용자가 올린 이미지가 없으면 기본 이미지를 보여줍니다 --- 👇 */}
+                <img src={meeting.coverImage || defaultCoverImage} alt={meeting.title} className="w-full h-40 object-cover group-hover:scale-105 transition-transform duration-300" />
             </div>
             <div className="p-4">
                 <h3 className="text-lg font-bold mb-2 truncate">{meeting.title}</h3>
                 <p className="text-sm text-gray-600 mb-1">📍 {meeting.location}</p>
                 <p className="text-sm text-gray-600 mb-3">🗓️ {new Date(meeting.date).toLocaleDateString('ko-KR')}</p>
                 <div className="flex items-center justify-between text-sm">
+                    {/* 👇 --- [수정] 참여자 이미지를 이모지 아이콘으로 변경했습니다 --- 👇 */}
                     <div className="flex items-center -space-x-2">
                         {meeting.participants.slice(0, 3).map((p, index) => (
-                             <img key={index} className="w-6 h-6 rounded-full border-2 border-white" src={`https://i.pravatar.cc/150?u=${p._id || index}`} alt={`p ${index}`}/>
+                             <FaUserCircle key={p._id || index} className="w-6 h-6 rounded-full border-2 border-white bg-gray-300 text-white" />
                         ))}
                     </div>
                     <span className="font-semibold">{meeting.participants.length} / {meeting.maxParticipants} 명</span>

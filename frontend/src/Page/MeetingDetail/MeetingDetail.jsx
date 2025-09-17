@@ -1,12 +1,10 @@
-// frontend/src/Page/MeetingDetail/MeetingDetail.jsx
-
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { FaUsers, FaMapMarkerAlt, FaCalendarAlt, FaChevronLeft, FaRegListAlt, FaUser } from 'react-icons/fa';
-import defaultCoverImage from '../../assets/moitmark1.png'; // 기본 이미지를 moitmark1.png로 변경했습니다. 필요시 moitmark2.jpg로 수정하세요.
-import { useAuth } from '../../context/AuthContext'; // 👈 [추가]
-import Swal from 'sweetalert2'; // 👈 [추가]
+import defaultCoverImage from '../../assets/moitmark2.jpg';
+import { useAuth } from '../../context/AuthContext';
+import Swal from 'sweetalert2';
 
 const formatDate = (dateString) => {
     const options = { month: 'long', day: 'numeric', weekday: 'long', hour: '2-digit', minute: '2-digit', hour12: false };
@@ -16,10 +14,14 @@ const formatDate = (dateString) => {
 const MeetingDetail = () => {
     const { id } = useParams();
     const navigate = useNavigate();
-    const { user } = useAuth(); // 👈 [추가]
+    const { user } = useAuth();
     const [meeting, setMeeting] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    
+    // 👇 --- [추가] API 요청 로딩 상태와 현재 사용자의 참여 여부 상태 --- 👇
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isParticipant, setIsParticipant] = useState(false);
 
     useEffect(() => {
         const fetchMeetingDetail = async () => {
@@ -38,29 +40,51 @@ const MeetingDetail = () => {
         fetchMeetingDetail();
     }, [id]);
 
-    // 👇 --- [추가] 삭제 버튼 클릭 시 실행될 함수 --- 👇
-    const handleDeleteMeeting = async () => {
-        const result = await Swal.fire({
-            title: '정말 모임을 삭제하시겠습니까?',
-            text: "삭제된 모임은 되돌릴 수 없습니다!",
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#d33',
-            cancelButtonColor: '#3085d6',
-            confirmButtonText: '네, 삭제하겠습니다',
-            cancelButtonText: '아니요'
-        });
+    // 👇 --- [추가] meeting 정보가 업데이트될 때마다 현재 유저의 참여 상태를 갱신 --- 👇
+    useEffect(() => {
+        if (user && meeting) {
+            const isUserParticipant = meeting.participants.some(p => p._id === user._id);
+            setIsParticipant(isUserParticipant);
+        }
+    }, [user, meeting]);
 
+    const handleDeleteMeeting = async () => {
+        // ... (기존 삭제 로직은 동일)
+        const result = await Swal.fire({
+            title: '정말 모임을 삭제하시겠습니까?', text: "삭제된 모임은 되돌릴 수 없습니다!",
+            icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6', confirmButtonText: '네, 삭제하겠습니다', cancelButtonText: '아니요'
+        });
         if (result.isConfirmed) {
             try {
                 await axios.delete(`/api/meetings/${id}`, { withCredentials: true });
                 await Swal.fire('삭제 완료!', '모임이 성공적으로 삭제되었습니다.', 'success');
                 navigate('/meetings');
             } catch (err) {
-                console.error('모임 삭제 실패:', err);
                 const message = err.response?.data?.message || '모임 삭제 중 오류가 발생했습니다.';
                 Swal.fire('오류 발생', message, 'error');
             }
+        }
+    };
+
+    // 👇 --- [추가] 모임 참여/취소 핸들러 함수 --- 👇
+    const handleJoinOrLeaveMeeting = async () => {
+        if (!user) {
+            Swal.fire('로그인 필요', '모임에 참여하려면 로그인이 필요합니다.', 'warning');
+            return navigate('/login');
+        }
+        setIsSubmitting(true);
+        try {
+            const endpoint = isParticipant ? `/api/meetings/${id}/leave` : `/api/meetings/${id}/join`;
+            const response = await axios.post(endpoint, {}, { withCredentials: true });
+            
+            setMeeting(response.data.meeting); // 서버로부터 받은 최신 모임 정보로 상태 업데이트
+            Swal.fire(isParticipant ? '신청 취소 완료' : '신청 완료!', response.data.message, 'success');
+        } catch (err) {
+            const message = err.response?.data?.message || '오류가 발생했습니다.';
+            Swal.fire('오류', message, 'error');
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -73,7 +97,6 @@ const MeetingDetail = () => {
     }
     
     const remainingSpots = meeting.maxParticipants - meeting.participants.length;
-    // 👇 --- [추가] 현재 사용자가 모임의 호스트인지 확인 --- 👇
     const isHost = user && meeting && user._id === meeting.host._id;
 
     return (
@@ -90,6 +113,7 @@ const MeetingDetail = () => {
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     <div className="lg:col-span-2">
+                         {/* ... (중략) ... */}
                         <div className='flex items-center justify-between mb-6'>
                             <div className="flex items-center">
                                 <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center mr-4">
@@ -99,7 +123,6 @@ const MeetingDetail = () => {
                                     <h1 className="text-3xl font-bold text-gray-900">{meeting.title}</h1>
                                 </div>
                             </div>
-                            {/* 👇 --- [추가] 호스트일 경우에만 삭제 버튼을 보여줌 --- 👇 */}
                             {isHost && (
                                 <button
                                     onClick={handleDeleteMeeting}
@@ -109,12 +132,10 @@ const MeetingDetail = () => {
                                 </button>
                             )}
                         </div>
-                        
                         <div className="mb-8">
                             <h2 className="text-xl font-bold mb-3">📝 모임 설명</h2>
                             <p className="text-gray-700 leading-relaxed bg-gray-50 p-4 rounded-md">{meeting.description}</p>
                         </div>
-                        
                         <div className="mb-8">
                             <h2 className="text-xl font-bold mb-3">📌 핵심 정보</h2>
                             <div className="grid grid-cols-2 gap-4 text-gray-700">
@@ -124,7 +145,6 @@ const MeetingDetail = () => {
                                 <div className="flex items-center p-3 bg-gray-50 rounded-lg"><FaUser className="mr-3 text-gray-400" size={20} /> <span className='font-semibold'>호스트:</span>&nbsp;{meeting.host.nickname}</div>
                             </div>
                         </div>
-
                         <h2 className="text-xl font-bold mb-3">👥 참여 멤버 ({meeting.participants.length})</h2>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {meeting.participants.map(p => (
@@ -146,12 +166,20 @@ const MeetingDetail = () => {
                             </div>
                             
                             <p className="text-sm text-gray-500 text-center mb-2">
-                                {remainingSpots > 0 ? `마감까지 ${remainingSpots}자리 남았어요!` : '모집이 마감되었습니다!'}
+                                {isParticipant ? '이미 참여하고 있는 모임입니다.' : (remainingSpots > 0 ? `마감까지 ${remainingSpots}자리 남았어요!` : '모집이 마감되었습니다!')}
                             </p>
+
+                            {/* 👇 --- [수정] 버튼 로직 전체 변경 --- 👇 */}
                             <button 
-                                disabled={remainingSpots <= 0}
-                                className="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed">
-                                신청하기
+                                onClick={handleJoinOrLeaveMeeting}
+                                disabled={(remainingSpots <= 0 && !isParticipant) || isSubmitting || isHost}
+                                className={`w-full font-bold py-3 px-4 rounded-lg transition-colors 
+                                    ${isHost ? 'bg-gray-400 text-white cursor-not-allowed' : 
+                                     isParticipant ? 'bg-red-500 hover:bg-red-600 text-white' : 
+                                     'bg-blue-600 hover:bg-blue-700 text-white'}
+                                    disabled:bg-gray-400 disabled:cursor-not-allowed`}
+                            >
+                                {isHost ? '당신은 호스트입니다' : (isSubmitting ? '처리 중...' : (isParticipant ? '신청 취소' : '신청하기'))}
                             </button>
                         </div>
                     </div>

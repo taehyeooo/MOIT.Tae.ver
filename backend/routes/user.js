@@ -4,7 +4,7 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const axios = require('axios');
 const User = require('../models/User');
-const Meeting = require('../models.Meeting');
+const Meeting = require('../models/Meeting');
 const { verifyToken } = require('../utils/auth');
 
 /**
@@ -203,6 +203,62 @@ router.get('/mypage', verifyToken, async (req, res) => {
     console.error("마이페이지 데이터 조회 에러:", error);
     res.status(500).json({ message: '서버 오류가 발생했습니다.' });
   }
+});
+
+/**
+ * ---------------------------------
+ * PUT /api/auth/profile - 프로필 정보 수정
+ * ---------------------------------
+ */
+router.put('/profile', verifyToken, async (req, res) => {
+    try {
+        const { nickname, email, currentPassword, newPassword } = req.body;
+        const userId = req.user.userId;
+
+        const user = await User.findById(userId).select('+password');
+        if (!user) {
+            return res.status(404).json({ message: '사용자를 찾을 수 없습니다.' });
+        }
+
+        // 닉네임, 이메일 중복 확인
+        if (nickname && nickname !== user.nickname) {
+            const existingNickname = await User.findOne({ nickname: nickname, _id: { $ne: userId } });
+            if (existingNickname) {
+                return res.status(409).json({ message: '이미 사용 중인 닉네임입니다.' });
+            }
+            user.nickname = nickname;
+        }
+
+        if (email && email !== user.email) {
+            const existingEmail = await User.findOne({ email: email, _id: { $ne: userId } });
+            if (existingEmail) {
+                return res.status(409).json({ message: '이미 사용 중인 이메일입니다.' });
+            }
+            user.email = email;
+        }
+
+        // 비밀번호 변경 로직
+        if (newPassword) {
+            if (!currentPassword) {
+                return res.status(400).json({ message: '현재 비밀번호를 입력해주세요.' });
+            }
+            const isMatch = await bcrypt.compare(currentPassword, user.password);
+            if (!isMatch) {
+                return res.status(401).json({ message: '현재 비밀번호가 일치하지 않습니다.' });
+            }
+            user.password = await bcrypt.hash(newPassword, 10);
+        }
+
+        await user.save();
+
+        const updatedUser = user.toObject();
+        delete updatedUser.password;
+
+        res.json({ message: '프로필이 성공적으로 업데이트되었습니다.', user: updatedUser });
+    } catch (error) {
+        console.error("프로필 업데이트 에러:", error);
+        res.status(500).json({ message: '서버 오류가 발생했습니다.' });
+    }
 });
 
 

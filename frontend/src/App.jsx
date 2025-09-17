@@ -26,6 +26,8 @@ import Meetings from './Page/Meetings/Meetings.jsx';
 import MeetingDetail from './Page/MeetingDetail/MeetingDetail.jsx';
 import CreateMeeting from './Page/CreateMeeting/CreateMeeting.jsx';
 import MyPage from './Page/MyPage/MyPage.jsx';
+// 👇 --- [확인 1] 이 import 구문이 정확히 있는지 확인해주세요. --- 👇
+import ProfileEdit from "./Page/ProfileEdit/ProfileEdit.jsx";
 
 // --- 라우트 보호 로직 ---
 const GuestRoute = () => {
@@ -75,8 +77,10 @@ function App() {
         <Route path="our-services" element={<Services />} />
         <Route path="contact" element={<Contact />} />
 
+        {/* 👇 --- [확인 2] UserProtectedRoute 안에 두 페이지 경로가 모두 있는지 확인해주세요. --- 👇 */}
         <Route element={<UserProtectedRoute />}>
           <Route path="mypage" element={<MyPage />} />
+          <Route path="profile/edit" element={<ProfileEdit />} /> 
         </Route>
 
       </Route>
