@@ -2,6 +2,10 @@ const express = require('express');
 const router = express.Router();
 const Meeting = require('../models/Meeting');
 const { verifyToken } = require('../utils/auth');
+const axios = require('axios'); // AI 서버와 통신을 위해 axios 추가
+
+// AI 에이전트 서버의 기본 URL
+const AI_AGENT_URL = 'http://127.0.0.1:8000';
 
 // 모든 모임 목록 조회
 router.get('/', async (req, res) => {
@@ -23,19 +27,12 @@ router.get('/closing-soon', async (req, res) => {
         const meetings = await Meeting.aggregate([
             {
                 $match: {
-                    date: { $gte: now }, // 아직 날짜가 지나지 않았고,
-                    $expr: { $lt: [{ $size: "$participants" }, "$maxParticipants"] } // 인원이 꽉 차지 않은 모임 중에서
+                    date: { $gte: now }, 
+                    $expr: { $lt: [{ $size: "$participants" }, "$maxParticipants"] }
                 }
             },
-            // 👇 --- [수정] 정렬 기준을 날짜가 가까운 순으로 변경했습니다. --- 👇
-            {
-                $sort: {
-                    date: 1 // 날짜 오름차순 (가장 가까운 날짜 먼저)
-                }
-            },
-            {
-                $limit: 4 // 최대 4개만 가져오기
-            }
+            { $sort: { date: 1 } },
+            { $limit: 4 }
         ]);
 
         const populatedMeetings = await Meeting.populate(meetings, [
@@ -55,8 +52,9 @@ router.get('/closing-soon', async (req, res) => {
 router.get('/:id', async (req, res) => {
     try {
         const meetingId = req.params.id;
+        // 👇 --- [수정] populate 부분을 수정하여 필요한 사용자 정보를 올바르게 가져옵니다. --- 👇
         const meeting = await Meeting.findById(meetingId)
-            .populate('host', 'nickname avatar')
+            .populate('host', 'nickname avatar') 
             .populate('participants', 'nickname avatar');
 
         if (!meeting) {
@@ -89,8 +87,23 @@ router.post('/', verifyToken, async (req, res) => {
             participants: [host]
         });
 
-        await newMeeting.save();
-        res.status(201).json(newMeeting);
+        const savedMeeting = await newMeeting.save();
+        
+        try {
+            console.log('AI 서버에 Pinecone 데이터 추가를 요청합니다...');
+            await axios.post(`${AI_AGENT_URL}/meetings/add`, {
+                meeting_id: savedMeeting._id.toString(),
+                title: savedMeeting.title,
+                description: savedMeeting.description,
+                time: new Date(savedMeeting.date).toLocaleString('ko-KR'), 
+                location: savedMeeting.location
+            });
+            console.log(`Pinecone에 모임(ID: ${savedMeeting._id}) 추가 요청 성공.`);
+        } catch (aiError) {
+            console.error("AI 서버(Pinecone)에 모임 정보를 추가하는 중 오류 발생:", aiError.message);
+        }
+        
+        res.status(201).json(savedMeeting);
 
     } catch (error) {
         console.error("모임 생성 에러:", error);
@@ -101,7 +114,8 @@ router.post('/', verifyToken, async (req, res) => {
 // 모임 삭제 API
 router.delete('/:id', verifyToken, async (req, res) => {
     try {
-        const meeting = await Meeting.findById(req.params.id);
+        const meetingId = req.params.id;
+        const meeting = await Meeting.findById(meetingId);
 
         if (!meeting) {
             return res.status(404).json({ message: '모임을 찾을 수 없습니다.' });
@@ -111,7 +125,15 @@ router.delete('/:id', verifyToken, async (req, res) => {
             return res.status(403).json({ message: '모임을 삭제할 권한이 없습니다.' });
         }
 
-        await Meeting.findByIdAndDelete(req.params.id);
+        try {
+            console.log('AI 서버에 Pinecone 데이터 삭제를 요청합니다...');
+            await axios.delete(`${AI_AGENT_URL}/meetings/delete/${meetingId}`);
+            console.log(`Pinecone에 모임(ID: ${meetingId}) 삭제 요청 성공.`);
+        } catch (aiError) {
+            console.error("AI 서버(Pinecone)에서 모임 정보를 삭제하는 중 오류 발생:", aiError.message);
+        }
+
+        await Meeting.findByIdAndDelete(meetingId);
         
         res.json({ message: '모임이 성공적으로 삭제되었습니다.' });
 

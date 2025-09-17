@@ -69,9 +69,15 @@ const CreateMeeting = () => {
                 host: user._id,
             };
             
+            // 👇 --- [수정] 응답 데이터를 response 변수에 저장합니다. --- 👇
             const response = await axios.post('/api/meetings', meetingData, { withCredentials: true });
+            
             Swal.fire('성공!', '새로운 모임이 만들어졌습니다!', 'success');
-            navigate(`/meetings/${response.data._id}`); // 생성된 모임 상세 페이지로 이동
+
+            // 👇 --- [수정] 응답에서 새 모임의 _id를 가져와 상세 페이지로 이동합니다. --- 👇
+            const newMeetingId = response.data._id;
+            navigate(`/meetings/${newMeetingId}`); 
+            
         } catch (error) {
             console.error('모임 생성 실패:', error);
             Swal.fire('오류', '모임 생성에 실패했습니다.', 'error');
@@ -138,5 +144,4 @@ const CreateMeeting = () => {
     );
 };
 
-// <<< 추가: 이 부분이 빠져서 에러가 발생했습니다.
 export default CreateMeeting;

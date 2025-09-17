@@ -61,32 +61,67 @@ router.post('/recommend', verifyToken, async (req, res) => {
     try {
         const { answers } = req.body;
         
-        console.log('Python AI 서버(http://127.0.0.1:5000/recommend)로 추천 요청을 보냅니다...');
-        
-        const aiResponse = await axios.post('http://127.0.0.1:5000/recommend', {
-            answers: answers 
-        });
+        const aiAgentUrl = 'http://127.0.0.1:8000/agent/invoke';
+        console.log(`AI 에이전트 서버(${aiAgentUrl})로 추천 요청을 보냅니다...`);
 
-        console.log('AI 서버로부터 응답을 받았습니다.');
-        res.json(aiResponse.data);
+        // 👇 --- [수정] answers 객체에서 올바른 키(Q6, Q7 등)로 값을 읽어오도록 수정합니다. --- 👇
+        const budgetMap = {
+            '5만원 미만': 50000,
+            '5~10만원': 100000,
+            '10~20만원': 200000,
+            '20만원 이상': 1000000
+        };
+
+        const timeMap = {
+            '3시간 미만': 3,
+            '3~5시간': 5,
+            '5~10시간': 10,
+            '10시간 이상': 24
+        };
+
+        const payload = {
+            user_input: {
+                survey: {
+                    "Q6": Number(answers.Q6) || 3,
+                    "Q7": Number(answers.Q7) || 3,
+                    "Q8": Number(answers.Q8) || 3,
+                    "Q9": Number(answers.Q9) || 3,
+                    "Q10": Number(answers.Q10) || 3,
+                    "Q11": Number(answers.Q11) || 3,
+                    "Q12": Number(answers.Q12) || 3,
+                    "Q13": Number(answers.Q13) || 3,
+                    "Q14": Number(answers.Q14) || 3,
+                    "Q15": Number(answers.Q15) || 3
+                },
+                user_context: {
+                    "monthly_budget": budgetMap[answers.monthly_budget] || 100000,
+                    "session_time_limit_hours": timeMap[answers.weekly_time] || 5,
+                    "offline_ok": true,
+                    "user_id": req.user.userId
+                }
+            }
+        };
+        
+        const agentResponse = await axios.post(aiAgentUrl, payload);
+
+        console.log('AI 에이전트로부터 응답을 받았습니다.');
+
+        const finalAnswer = JSON.parse(agentResponse.data.final_answer);
+        res.json(finalAnswer);
 
     } catch (error) {
-        // 👇 --- [수정] 에러 로그를 더 자세히 출력하도록 변경했습니다. --- 👇
-        console.error("AI 서버 호출 중 심각한 오류 발생!");
+        console.error("AI 에이전트 호출 중 심각한 오류 발생!");
         if (axios.isAxiosError(error)) {
-            // Python 서버가 응답을 하긴 했지만, 그 응답이 에러인 경우 (예: 404, 500)
             if (error.response) {
-                console.error("AI 서버 응답 상태:", error.response.status);
-                console.error("AI 서버 응답 데이터:", error.response.data);
-                return res.status(500).json({ message: `AI 서버가 오류를 반환했습니다: ${error.response.status}` });
+                console.error("AI 에이전트 응답 상태:", error.response.status);
+                console.error("AI 에이전트 응답 데이터:", error.response.data);
+                return res.status(500).json({ message: `AI 에이전트가 오류를 반환했습니다: ${error.response.status}` });
             } 
-            // Python 서버 자체가 꺼져있거나, 주소가 잘못되어 응답이 아예 없는 경우
             else if (error.request) {
-                console.error("AI 서버로부터 응답이 없습니다. AI 서버가 실행 중인지, 주소가 올바른지 확인해주세요.");
-                return res.status(500).json({ message: "AI 추천 서버에 연결할 수 없습니다." });
+                console.error("AI 에이전트로부터 응답이 없습니다. uvicorn 서버가 실행 중인지, 주소가 올바른지 확인해주세요.");
+                return res.status(500).json({ message: "AI 추천 에이전트에 연결할 수 없습니다." });
             }
         }
-        // 그 외의 일반적인 오류
         console.error("알 수 없는 오류:", error.message);
         res.status(500).json({ message: "AI 추천 요청 처리 중 문제가 발생했습니다." });
     }

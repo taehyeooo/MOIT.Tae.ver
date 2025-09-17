@@ -9,21 +9,21 @@ import { FaUsers, FaFire, FaUserPlus, FaSmile, FaRunning, FaBook, FaPalette, FaU
 // --- 데이터 영역 ---
 
 const surveyQuestions = [
-    { id: 'age', type: 'choice', text: '연령대를 선택해 주세요.', options: ['10대', '20대', '30대', '40대', '50대 이상'] },
+    { id: 'age_group', type: 'choice', text: '연령대를 선택해 주세요.', options: ['10대', '20대', '30대', '40대', '50대 이상'] },
     { id: 'gender', type: 'choice', text: '성별을 선택해 주세요.', options: ['남성', '여성', '선택 안 함'] },
-    { id: 'job', type: 'choice', text: '현재 어떤 일을 하고 계신가요?', options: ['학생', '직장인', '프리랜서', '주부', '구직자', '기타'] },
-    { id: 'time', type: 'choice', text: '일주일에 온전히 나를 위해 사용할 수 있는 시간은 어느 정도인가요?', options: ['3시간 미만', '3-5시간', '5-10시간', '10시간 이상'] },
-    { id: 'budget', type: 'choice', text: '한 달에 취미 활동을 위해 얼마까지 지출할 수 있나요?', options: ['5만원 미만', '5-10만원', '10-20만원', '20만원 이상'] },
-    { id: 'social', type: 'scale', text: '새로운 사람들과 어울리기보다, 혼자 또는 가까운 친구와 깊이 있는 시간을 보내는 것을 선호합니다.' },
-    { id: 'spontaneity', type: 'scale', text: '반복적인 일상에 안정감을 느끼기보다, 예측 불가능한 새로운 경험을 통해 영감을 얻는 편입니다.' },
-    { id: 'planning', type: 'scale', text: '즉흥적으로 행동하기보다, 명확한 목표를 세우고 계획에 따라 꾸준히 실행하는 것에서 성취감을 느낍니다.' },
-    { id: 'creativity', type: 'scale', text: '정해진 규칙을 따르기보다, 나만의 방식과 스타일을 더해 독창적인 결과물을 만드는 것을 즐깁니다.' },
-    { id: 'growth', type: 'scale', text: '과정 자체를 즐기는 것도 좋지만, 꾸준한 연습을 통해 실력이 향상되는 것을 눈으로 확인할 때 가장 큰 보람을 느낍니다.' },
-    { id: 'energy', type: 'scale', text: '하루의 스트레스를 조용히 생각하며 풀기보다, 몸을 움직여 땀을 흘리며 해소하는 것을 선호합니다.' },
-    { id: 'business', type: 'scale', text: '취미 활동을 통해 새로운 수익을 창출하거나, SNS에서 영향력을 키우는 것에 관심이 많습니다.' },
-    { id: 'online', type: 'scale', text: '오프라인에서 직접 만나 교류하는 것만큼, 온라인 커뮤니티에서 소통하는 것에서도 강한 소속감을 느낍니다.' },
-    { id: 'depth', type: 'scale', text: '하나의 취미를 깊게 파고드는 전문가가 되기보다, 다양한 분야를 경험해보는 제너럴리스트가 되고 싶습니다.' },
-    { id: 'fun', type: 'scale', text: '이 취미를 통해 \'무엇을 얻을 수 있는가\'보다 \'그 순간이 얼마나 즐거운가\'가 더 중요합니다.' },
+    { id: 'occupation', type: 'choice', text: '현재 어떤 일을 하고 계신가요?', options: ['학생', '직장인', '프리랜서', '주부', '구직자', '기타'] },
+    { id: 'weekly_time', type: 'choice', text: '일주일에 온전히 나를 위해 사용할 수 있는 시간은 어느 정도인가요?', options: ['3시간 미만', '3~5시간', '5~10시간', '10시간 이상'] },
+    { id: 'monthly_budget', type: 'choice', text: '한 달에 취미 활동을 위해 얼마까지 지출할 수 있나요?', options: ['5만원 미만', '5~10만원', '10~20만원', '20만원 이상'] },
+    { id: 'Q6', type: 'scale', text: '새로운 사람들과 어울리기보다, 혼자 또는 가까운 친구와 깊이 있는 시간을 보내는 것을 선호합니다.' },
+    { id: 'Q7', type: 'scale', text: '반복적인 일상에 안정감을 느끼기보다, 예측 불가능한 새로운 경험을 통해 영감을 얻는 편입니다.' },
+    { id: 'Q8', type: 'scale', text: '즉흥적으로 행동하기보다, 명확한 목표를 세우고 계획에 따라 꾸준히 실행하는 것에서 성취감을 느낍니다.' },
+    { id: 'Q9', type: 'scale', text: '정해진 규칙을 따르기보다, 나만의 방식과 스타일을 더해 독창적인 결과물을 만드는 것을 즐깁니다.' },
+    { id: 'Q10', type: 'scale', text: '과정 자체를 즐기는 것도 좋지만, 꾸준한 연습을 통해 실력이 향상되는 것을 눈으로 확인할 때 가장 큰 보람을 느낍니다.' },
+    { id: 'Q11', type: 'scale', text: '하루의 스트레스를 조용히 생각하며 풀기보다, 몸을 움직여 땀을 흘리며 해소하는 것을 선호합니다.' },
+    { id: 'Q12', type: 'scale', text: '취미 활동을 통해 새로운 수익을 창출하거나, SNS에서 영향력을 키우는 것에 관심이 많습니다.' },
+    { id: 'Q13', type: 'scale', text: '오프라인에서 직접 만나 교류하는 것만큼, 온라인 커뮤니티에서 소통하는 것에서도 강한 소속감을 느낍니다.' },
+    { id: 'Q14', type: 'scale', text: '하나의 취미를 깊게 파고드는 전문가가 되기보다, 다양한 분야를 경험해보는 제너럴리스트가 되고 싶습니다.' },
+    { id: 'Q15', type: 'scale', text: '이 취미를 통해 \'무엇을 얻을 수 있는가\'보다 \'그 순간이 얼마나 즐거운가\'가 더 중요합니다.' },
 ];
 
 // --- 컴포넌트 영역 ---
@@ -98,16 +98,22 @@ const Survey = ({ onComplete }) => {
     const currentQuestion = surveyQuestions[currentStep];
     const totalSteps = surveyQuestions.length;
 
-    const handleSelect = (value) => {
-        const newAnswers = { ...answers, [currentQuestion.id]: value };
-        setAnswers(newAnswers);
-    };
-
     const handleNext = () => {
         if (currentStep < totalSteps - 1) {
             setCurrentStep(currentStep + 1);
         } else {
             onComplete(answers);
+        }
+    };
+
+    const handleSelect = (value) => {
+        const newAnswers = { ...answers, [currentQuestion.id]: value };
+        setAnswers(newAnswers);
+
+        if (currentStep < totalSteps - 1) {
+            setTimeout(() => {
+                handleNext();
+            }, 300);
         }
     };
     
@@ -183,10 +189,17 @@ const Survey = ({ onComplete }) => {
                         className="px-8 py-3 bg-gray-200 text-gray-700 font-bold rounded-lg disabled:opacity-50 hover:bg-gray-300 transition-colors">
                         이전
                     </button>
-                    <button onClick={handleNext} disabled={!isAnswered}
-                        className="px-8 py-3 bg-blue-600 text-white font-bold rounded-lg disabled:bg-gray-300 hover:bg-blue-700 transition-colors">
-                        {isLastStep ? '결과 보기' : '다음'}
-                    </button>
+                    {isLastStep ? (
+                        <button onClick={() => onComplete(answers)} disabled={!isAnswered}
+                            className="px-8 py-3 bg-blue-600 text-white font-bold rounded-lg disabled:bg-gray-300 hover:bg-blue-700 transition-colors">
+                            결과 보기
+                        </button>
+                    ) : (
+                        <button onClick={handleNext} disabled={!isAnswered}
+                            className="px-8 py-3 bg-blue-600 text-white font-bold rounded-lg disabled:bg-gray-300 hover:bg-blue-700 transition-colors">
+                            다음
+                        </button>
+                    )}
                 </div>
             </div>
             
@@ -199,24 +212,30 @@ const Results = ({ recommendations, onReset }) => (
     <div className="max-w-2xl mx-auto">
         <div className="bg-white p-8 rounded-lg shadow-lg text-center">
              <h2 className="text-3xl font-bold mb-2 text-blue-600">🎉 맞춤 취미 추천</h2>
-             <p className="text-gray-600 mb-8">설문 결과를 바탕으로 3개의 취미를 추천해드려요!</p>
+             <p className="text-gray-600 mb-8">AI가 회원님의 성향을 분석하여 3개의 취미를 추천해드려요!</p>
         </div>
 
         <div className="space-y-6 mt-8">
             {recommendations.length > 0 ? recommendations.map((hobby, index) => (
                 <motion.div
-                    key={index}
+                    key={`${hobby.hobby_id}-${index}`}
                     className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow"
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.1 }}
                 >
-                    <h3 className="text-2xl font-bold text-gray-800 mb-2">{hobby.name}</h3>
-                    <p className="text-gray-600 mb-4">{hobby.description}</p>
+                    <h3 className="text-2xl font-bold text-gray-800 mb-2">{hobby.name_ko}</h3>
+                    <p className="text-gray-600 mb-4">{hobby.short_desc}</p>
+                    
                     <div className="flex flex-wrap gap-2 mb-4">
-                        {hobby.tags.map((tag, i) => (<span key={i} className="bg-blue-100 text-blue-800 text-xs font-semibold px-3 py-1 rounded-full">{tag}</span>))}
+                        {(hobby.reason || '').split(' · ').map((tag, i) => (
+                            tag && <span key={i} className="bg-blue-100 text-blue-800 text-xs font-semibold px-3 py-1 rounded-full">{tag.trim()}</span>
+                        ))}
                     </div>
-                    <div className="text-right font-bold text-blue-600 text-lg">추천도: {hobby.matchRate}%</div>
+                    
+                    <div className="text-right font-bold text-blue-600 text-lg">
+                        추천도: {Math.round(hobby.score_total)}%
+                    </div>
                 </motion.div>
             )) : <div className="text-center p-8 bg-white rounded-lg shadow-md">추천할 만한 취미를 찾지 못했어요.</div>}
         </div>
@@ -262,16 +281,16 @@ const HobbyRecommend = () => {
         };
         fetchResult();
     }, [user]);
-
+    
     const getAiRecommendations = async (answers) => {
         try {
-            console.log("Node.js 백엔드에 추천 요청을 보냅니다...");
+            console.log("Node.js 백엔드를 통해 AI 에이전트에 추천 요청을 보냅니다...");
             const response = await axios.post(
                 '/api/survey/recommend', 
                 { answers }, 
                 { withCredentials: true }
             );
-            return response.data.recommendations || [];
+            return response.data || [];
         } catch (error) {
             console.error("AI 추천을 받아오는 중 오류 발생:", error);
             Swal.fire('AI 추천 실패', '추천을 받아오는 중 문제가 발생했습니다. 잠시 후 다시 시도해주세요.', 'error');
@@ -284,16 +303,24 @@ const HobbyRecommend = () => {
         
         const results = await getAiRecommendations(answers);
 
-        if (results.length === 0) {
+        // 👇 --- [수정] 중복 제거 후 상위 3개만 선택하는 로직 --- 👇
+        const uniqueResults = results.reduce((acc, current) => {
+            if (!acc.find(item => item.name_ko === current.name_ko)) {
+                acc.push(current);
+            }
+            return acc;
+        }, []).slice(0, 3); // 중복 제거 후 앞에서부터 3개만 잘라냄
+
+        if (uniqueResults.length === 0) {
             setStep('survey');
             return;
         }
         
-        setRecommendations(results);
+        setRecommendations(uniqueResults);
 
         if (user) {
             try {
-                await axios.post('/api/survey', { answers, recommendations: results }, { withCredentials: true });
+                await axios.post('/api/survey', { answers, recommendations: uniqueResults }, { withCredentials: true });
             } catch (error) {
                 console.error("결과 저장 중 오류 발생:", error);
             }
