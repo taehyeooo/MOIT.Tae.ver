@@ -3,7 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
-import { FaUsers, FaFire, FaUserPlus } from 'react-icons/fa'; // 👈 [추가] 통계 아이콘
+import Swal from 'sweetalert2';
+import { FaUsers, FaFire, FaUserPlus, FaSmile, FaRunning, FaBook, FaPalette, FaUtensils, FaPlaneDeparture, FaHeart, FaChevronDown, FaChevronUp } from 'react-icons/fa';
 
 // --- 데이터 영역 ---
 
@@ -27,7 +28,6 @@ const surveyQuestions = [
 
 // --- 컴포넌트 영역 ---
 
-// 👇 --- [추가] 통계 정보를 보여주는 사이드바 컴포넌트 --- 👇
 const StatsSidebar = () => {
     const [stats, setStats] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -75,7 +75,6 @@ const StatsSidebar = () => {
         </div>
     );
 };
-
 
 const LoginPrompt = () => (
     <div className="text-center bg-white p-12 rounded-lg shadow-lg max-w-lg mx-auto">
@@ -191,13 +190,11 @@ const Survey = ({ onComplete }) => {
                 </div>
             </div>
             
-            {/* 👇 --- [수정] 기존 인기 취미 섹션을 통계 컴포넌트로 교체 --- 👇 */}
             <StatsSidebar />
         </div>
     );
 };
 
-// ... (Results 컴포넌트는 이전과 동일)
 const Results = ({ recommendations, onReset }) => (
     <div className="max-w-2xl mx-auto">
         <div className="bg-white p-8 rounded-lg shadow-lg text-center">
@@ -267,20 +264,31 @@ const HobbyRecommend = () => {
     }, [user]);
 
     const getAiRecommendations = async (answers) => {
-        console.log("AI 추천 API 호출 시뮬레이션. 전달된 답변:", answers);
-        await new Promise(resolve => setTimeout(resolve, 1000)); 
-        const exampleResults = [
-            { name: '모바일 게임', description: '스마트폰으로 즐기는 게임', tags: ['자율성/창작', '성장/숙련(유능성)', '새로운 경험(개방성)', '혼자 몰입'], matchRate: 10000 },
-            { name: 'VR 게임', description: '가상현실 장비 기반 게임', tags: ['성장/숙련(유능성)', '자율성/창작', '새로운 경험(개방성)', '혼자 몰입'], matchRate: 9754 },
-            { name: '퍼즐 게임', description: '스도쿠, 퍼즐류 게임', tags: ['자율성/창작', '성장/숙련(유능성)', '계획/꾸준함(성실성)', '혼자 몰입'], matchRate: 9643 },
-        ];
-        return exampleResults;
+        try {
+            console.log("Node.js 백엔드에 추천 요청을 보냅니다...");
+            const response = await axios.post(
+                '/api/survey/recommend', 
+                { answers }, 
+                { withCredentials: true }
+            );
+            return response.data.recommendations || [];
+        } catch (error) {
+            console.error("AI 추천을 받아오는 중 오류 발생:", error);
+            Swal.fire('AI 추천 실패', '추천을 받아오는 중 문제가 발생했습니다. 잠시 후 다시 시도해주세요.', 'error');
+            return [];
+        }
     };
-
 
     const handleSurveyComplete = async (answers) => {
         setStep('loading');
+        
         const results = await getAiRecommendations(answers);
+
+        if (results.length === 0) {
+            setStep('survey');
+            return;
+        }
+        
         setRecommendations(results);
 
         if (user) {
@@ -307,8 +315,9 @@ const HobbyRecommend = () => {
             case 'survey':
                 return <Survey onComplete={handleSurveyComplete} />;
             case 'results':
-                // 👇 --- [수정] 결과 페이지는 통계 사이드바를 보여주지 않도록 별도 처리 --- 👇
                 return <Results recommendations={recommendations} onReset={handleReset} />;
+            case 'loading':
+                 return <div className="text-center p-12 text-gray-500">AI가 회원님을 위한 취미를 분석 중입니다... 잠시만 기다려주세요.</div>;
             default:
                 return <div className="text-center p-12 text-gray-500">사용자 정보를 확인하는 중...</div>;
         }

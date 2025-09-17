@@ -1,12 +1,11 @@
-
 const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
 const SurveyResult = require('../models/SurveyResult');
 const User = require('../models/User');
+const axios = require('axios');
 
 // --- JWT 인증 미들웨어 ---
-// 요청에 포함된 쿠키의 토큰을 확인하여 로그인된 사용자인지 검증합니다.
 const verifyToken = (req, res, next) => {
   const token = req.cookies.token;
   if (!token) {
@@ -14,7 +13,7 @@ const verifyToken = (req, res, next) => {
   }
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded; // 요청 객체에 사용자 ID와 이름을 추가합니다.
+    req.user = decoded;
     next();
   } catch (error) {
     return res.status(401).json({ message: '유효하지 않은 토큰입니다.' });
@@ -23,21 +22,13 @@ const verifyToken = (req, res, next) => {
 
 // --- API 라우트 ---
 
-/**
- * GET /api/survey
- * 현재 로그인된 사용자의 기존 설문 결과를 조회합니다.
- */
+// 기존 설문 결과 조회
 router.get('/', verifyToken, async (req, res) => {
   try {
-    // 토큰에서 확인된 사용자 ID로 설문 결과를 찾습니다.
     const result = await SurveyResult.findOne({ userId: req.user.userId });
-    
-    // 결과가 없으면 404 에러를 보냅니다.
     if (!result) {
       return res.status(404).json({ message: '저장된 설문 결과가 없습니다.' });
     }
-    
-    // 결과가 있으면 결과를 응답으로 보냅니다.
     res.json(result);
   } catch (error) {
     console.error("Survey GET Error:", error);
@@ -45,25 +36,17 @@ router.get('/', verifyToken, async (req, res) => {
   }
 });
 
-/**
- * POST /api/survey
- * 현재 로그인된 사용자의 설문 결과를 저장하거나 업데이트합니다.
- */
+// 설문 결과 저장
 router.post('/', verifyToken, async (req, res) => {
   try {
     const { answers, recommendations } = req.body;
     const userId = req.user.userId;
 
-    // findOneAndUpdate를 사용하여,
-    // 해당 유저의 결과가 이미 있으면 내용을 업데이트(update)하고,
-    // 없으면 새로 생성(insert)합니다. (upsert: true 옵션)
     const result = await SurveyResult.findOneAndUpdate(
       { userId: userId },
       { userId, answers, recommendations },
       { new: true, upsert: true, setDefaultsOnInsert: true }
     );
-
-    // User 모델에도 해당 결과 문서의 ID를 저장해줍니다.
     await User.findByIdAndUpdate(userId, { surveyResult: result._id });
 
     res.status(201).json(result);
@@ -73,5 +56,40 @@ router.post('/', verifyToken, async (req, res) => {
   }
 });
 
-// 이 라우터 설정을 외부(index.js)에서 사용할 수 있도록 export합니다.
+// Python AI 서버에 추천을 요청하는 API
+router.post('/recommend', verifyToken, async (req, res) => {
+    try {
+        const { answers } = req.body;
+        
+        console.log('Python AI 서버(http://127.0.0.1:5000/recommend)로 추천 요청을 보냅니다...');
+        
+        const aiResponse = await axios.post('http://127.0.0.1:5000/recommend', {
+            answers: answers 
+        });
+
+        console.log('AI 서버로부터 응답을 받았습니다.');
+        res.json(aiResponse.data);
+
+    } catch (error) {
+        // 👇 --- [수정] 에러 로그를 더 자세히 출력하도록 변경했습니다. --- 👇
+        console.error("AI 서버 호출 중 심각한 오류 발생!");
+        if (axios.isAxiosError(error)) {
+            // Python 서버가 응답을 하긴 했지만, 그 응답이 에러인 경우 (예: 404, 500)
+            if (error.response) {
+                console.error("AI 서버 응답 상태:", error.response.status);
+                console.error("AI 서버 응답 데이터:", error.response.data);
+                return res.status(500).json({ message: `AI 서버가 오류를 반환했습니다: ${error.response.status}` });
+            } 
+            // Python 서버 자체가 꺼져있거나, 주소가 잘못되어 응답이 아예 없는 경우
+            else if (error.request) {
+                console.error("AI 서버로부터 응답이 없습니다. AI 서버가 실행 중인지, 주소가 올바른지 확인해주세요.");
+                return res.status(500).json({ message: "AI 추천 서버에 연결할 수 없습니다." });
+            }
+        }
+        // 그 외의 일반적인 오류
+        console.error("알 수 없는 오류:", error.message);
+        res.status(500).json({ message: "AI 추천 요청 처리 중 문제가 발생했습니다." });
+    }
+});
+
 module.exports = router;
