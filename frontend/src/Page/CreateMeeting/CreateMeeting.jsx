@@ -4,15 +4,9 @@ import axios from 'axios';
 import { useAuth } from '../../context/AuthContext';
 import Swal from 'sweetalert2';
 
-// Meetings 페이지에서 사용했던 카테고리 목록을 그대로 가져옵니다. '전체' 제외.
 const categories = [
-    '취미 및 여가',
-    '운동 및 액티비티',
-    '성장 및 배움',
-    '문화 및 예술',
-    '푸드 및 드링크',
-    '여행 및 탐방',
-    '봉사 및 참여',
+    '취미 및 여가', '운동 및 액티비티', '성장 및 배움', '문화 및 예술',
+    '푸드 및 드링크', '여행 및 탐방', '봉사 및 참여',
 ];
 
 const CreateMeeting = () => {
@@ -28,6 +22,7 @@ const CreateMeeting = () => {
         coverImage: '',
     });
     const [file, setFile] = useState(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -45,6 +40,8 @@ const CreateMeeting = () => {
             return navigate('/login');
         }
 
+        setIsSubmitting(true);
+
         let imageUrl = '';
         if (file) {
             const uploadFormData = new FormData();
@@ -58,32 +55,45 @@ const CreateMeeting = () => {
             } catch (error) {
                 console.error('이미지 업로드 실패:', error);
                 Swal.fire('오류', '이미지 업로드에 실패했습니다.', 'error');
+                setIsSubmitting(false);
                 return;
             }
         }
 
         try {
-            const meetingData = {
-                ...formData,
-                coverImage: imageUrl,
-                host: user._id,
-            };
-            
-            // 👇 --- [수정] 응답 데이터를 response 변수에 저장합니다. --- 👇
+            const meetingData = { ...formData, coverImage: imageUrl };
             const response = await axios.post('/api/meetings', meetingData, { withCredentials: true });
-            
-            Swal.fire('성공!', '새로운 모임이 만들어졌습니다!', 'success');
 
-            // 👇 --- [수정] 응답에서 새 모임의 _id를 가져와 상세 페이지로 이동합니다. --- 👇
-            const newMeetingId = response.data._id;
-            navigate(`/meetings/${newMeetingId}`); 
-            
+            if (response.data.action === 'recommend') {
+                navigate('/meetings/recommend', {
+                    state: {
+                        recommendations: response.data.recommendations,
+                        newMeetingData: response.data.newMeetingData
+                    }
+                });
+            } else if (response.data.action === 'created') {
+                await Swal.fire({
+                    icon: 'success',
+                    title: '성공!',
+                    text: '새로운 모임이 만들어졌습니다!',
+                    timer: 1500,
+                    showConfirmButton: false
+                });
+                // 👇 --- [수정] response.data.meeting._id 로 올바르게 ID를 가져옵니다. --- 👇
+                const newMeetingId = response.data.meeting._id;
+                navigate(`/meetings/${newMeetingId}`);
+            } else {
+                throw new Error("서버로부터 예상치 못한 응답을 받았습니다.");
+            }
+
         } catch (error) {
             console.error('모임 생성 실패:', error);
             Swal.fire('오류', '모임 생성에 실패했습니다.', 'error');
+        } finally {
+            setIsSubmitting(false);
         }
     };
-
+    
     return (
         <div className="bg-gray-50 py-32 min-h-screen">
             <div className="container mx-auto max-w-2xl">
@@ -130,11 +140,11 @@ const CreateMeeting = () => {
                             <input type="number" name="maxParticipants" value={formData.maxParticipants} onChange={handleChange} required min="2"
                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"/>
                         </div>
-
                         <div className="pt-4">
                             <button type="submit"
-                                    className="w-full bg-green-500 text-white font-bold py-3 px-4 rounded-lg hover:bg-green-600 transition-colors">
-                                생성하기
+                                    disabled={isSubmitting}
+                                    className="w-full bg-green-500 text-white font-bold py-3 px-4 rounded-lg hover:bg-green-600 transition-colors disabled:bg-gray-400">
+                                {isSubmitting ? 'AI가 분석 중...' : '생성하기'}
                             </button>
                         </div>
                     </form>
