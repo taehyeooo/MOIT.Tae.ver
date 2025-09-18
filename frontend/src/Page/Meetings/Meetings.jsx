@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
-import { 
-    FaSmile, FaRunning, FaBook, FaPalette, FaUtensils, FaPlaneDeparture, FaHeart, 
-    FaChevronDown, FaChevronUp, FaUsers, FaSearch, FaPlus, FaUserCircle 
+import {
+    FaSmile, FaRunning, FaBook, FaPalette, FaUtensils, FaPlaneDeparture, FaHeart,
+    FaChevronDown, FaChevronUp, FaUsers, FaSearch, FaPlus, FaUserCircle
 } from 'react-icons/fa';
 import defaultCoverImage from '../../assets/moitmark2.jpg';
-// 👇 --- [추가] 날짜 계산을 위한 라이브러리 import --- 👇
 import { formatDistanceToNowStrict } from 'date-fns';
 import { ko } from 'date-fns/locale';
 
@@ -40,9 +39,7 @@ const MeetingCard = ({ meeting }) => (
     </Link>
 );
 
-// 👇 --- [수정] 마감 임박 카드에 남은 자리 대신 남은 시간을 표시하도록 변경 --- 👇
 const SmallMeetingCard = ({ meeting }) => {
-    // 현재 시간과 모임 시간의 차이를 계산 (예: "3일 후", "12시간 후")
     const timeLeft = formatDistanceToNowStrict(new Date(meeting.date), {
         addSuffix: true,
         locale: ko,
@@ -105,7 +102,6 @@ const ClosingSoonSection = () => {
     );
 };
 
-
 const Meetings = () => {
     const [activeFilter, setActiveFilter] = useState('전체');
     const [meetings, setMeetings] = useState([]);
@@ -113,6 +109,8 @@ const Meetings = () => {
     const [showAllCategories, setShowAllCategories] = useState(false);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
+    // 👇 --- [추가] 정렬 순서 상태 (기본값: 'latest') --- 👇
+    const [sortOrder, setSortOrder] = useState('latest');
 
     useEffect(() => {
         const fetchMeetings = async () => {
@@ -129,15 +127,30 @@ const Meetings = () => {
         fetchMeetings();
     }, []);
 
+    // 👇 --- [수정] 필터링 및 정렬 로직을 하나의 useEffect로 통합 --- 👇
     useEffect(() => {
+        // 1. 카테고리와 검색어로 필터링
         const currentFiltered = meetings.filter(meeting => {
             const matchesCategory = activeFilter === '전체' || meeting.category === activeFilter;
-            const matchesSearchTerm = meeting.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
+            const matchesSearchTerm = meeting.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                                       (meeting.category && meeting.category.toLowerCase().includes(searchTerm.toLowerCase()));
             return matchesCategory && matchesSearchTerm;
         });
-        setFilteredMeetings(currentFiltered);
-    }, [activeFilter, meetings, searchTerm]);
+
+        // 2. 정렬 순서에 따라 정렬
+        const sorted = [...currentFiltered].sort((a, b) => {
+            if (sortOrder === 'latest') {
+                // 최신순: createdAt 기준으로 내림차순
+                return new Date(b.createdAt) - new Date(a.createdAt);
+            } else if (sortOrder === 'closingSoon') {
+                // 마감 임박순: date 기준으로 오름차순
+                return new Date(a.date) - new Date(b.date);
+            }
+            return 0;
+        });
+
+        setFilteredMeetings(sorted);
+    }, [activeFilter, meetings, searchTerm, sortOrder]);
     
     const visibleCategories = showAllCategories ? categories : categories.slice(0, 7);
 
@@ -152,7 +165,8 @@ const Meetings = () => {
                 
                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
                     <div className="lg:col-span-3">
-                        <div className="max-w-full mx-auto p-4 bg-white rounded-lg shadow mb-8">
+                        <div className="p-4 bg-white rounded-lg shadow mb-8">
+                            {/* 카테고리 필터 */}
                             <div className="flex flex-wrap justify-center gap-2">
                                 {visibleCategories.map(category => (
                                     <button key={category.name} onClick={() => setActiveFilter(category.name)}
@@ -169,13 +183,24 @@ const Meetings = () => {
                                     </button>
                                 )}
                             </div>
+                            
+                            {/* 👇 --- [추가] 정렬 버튼 UI --- 👇 */}
+                            <div className="mt-4 pt-4 border-t flex justify-end items-center gap-2">
+                                <span className="text-sm font-medium text-gray-600">정렬:</span>
+                                <button onClick={() => setSortOrder('latest')} className={`px-3 py-1 text-sm rounded-full ${sortOrder === 'latest' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'}`}>
+                                    최신순
+                                </button>
+                                <button onClick={() => setSortOrder('closingSoon')} className={`px-3 py-1 text-sm rounded-full ${sortOrder === 'closingSoon' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'}`}>
+                                    마감 임박순
+                                </button>
+                            </div>
                         </div>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
                             {filteredMeetings.length > 0 ? (
                                 filteredMeetings.map(meeting => <MeetingCard key={meeting._id} meeting={meeting} />)
                             ) : (
-                                <p className="col-span-full text-center text-gray-500 py-10">해당 카테고리의 모임이 없습니다.</p>
+                                <p className="col-span-full text-center text-gray-500 py-10">해당 조건의 모임이 없습니다.</p>
                             )}
                         </div>
                     </div>

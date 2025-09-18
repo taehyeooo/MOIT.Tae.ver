@@ -6,8 +6,7 @@ const axios = require('axios');
 
 const AI_AGENT_URL = 'http://127.0.0.1:8000';
 
-// --- (GET, DELETE, 참여/취소 등 다른 라우터는 변경 없음) ---
-
+// --- (GET, DELETE 등 다른 라우터는 변경 없음) ---
 // 모든 모임 목록 조회
 router.get('/', async (req, res) => {
     try {
@@ -79,12 +78,12 @@ router.get('/:id', async (req, res) => {
 
 /**
  * ------------------------------------------------------------------
- * [수정] POST / - 새로운 모임 생성 (응답 구조 명확화)
+ * [수정] POST / - 새로운 모임 생성 (호스트가 본인인 모임 추천 제외)
  * ------------------------------------------------------------------
  */
 router.post('/', verifyToken, async (req, res) => {
     const { title, description, coverImage, category, location, date, maxParticipants } = req.body;
-    const host = req.user.userId;
+    const host = req.user.userId; // 현재 로그인한 사용자(호스트) ID
 
     try {
         const agentResponse = await axios.post(`${AI_AGENT_URL}/agent/invoke`, {
@@ -99,16 +98,33 @@ router.post('/', verifyToken, async (req, res) => {
         const recommendations = JSON.parse(agentResponse.data.final_answer);
 
         if (recommendations && recommendations.recommendations.length > 0) {
-            console.log('AI가 유사한 모임을 찾았습니다:', recommendations);
-            // Case 1: 추천할 모임이 있을 때 -> 'recommend' 신호 전송
-            return res.status(200).json({
-                action: 'recommend',
-                recommendations: recommendations,
-                newMeetingData: req.body
+            
+            // 👇 --- [수정] 추천 목록에서 본인이 호스트인 모임은 제외하는 로직 --- 👇
+            const recommendedIds = recommendations.recommendations.map(rec => rec.meeting_id);
+            const recommendedMeetingsFromDB = await Meeting.find({ '_id': { $in: recommendedIds } });
+
+            const filteredRecs = recommendations.recommendations.filter(rec => {
+                const meeting = recommendedMeetingsFromDB.find(m => m._id.toString() === rec.meeting_id);
+                // DB에서 찾은 모임의 호스트 ID와 현재 사용자 ID가 다를 경우에만 포함
+                return meeting && meeting.host.toString() !== host;
             });
+            // ----------------------------------------------------------------
+
+            // 필터링 후에도 추천할 모임이 남아있다면
+            if (filteredRecs.length > 0) {
+                console.log('AI가 추천한 모임 (본인 모임 제외):', filteredRecs);
+                return res.status(200).json({
+                    action: 'recommend',
+                    recommendations: { // 원본 구조 유지
+                        summary: recommendations.summary,
+                        recommendations: filteredRecs
+                    },
+                    newMeetingData: req.body
+                });
+            }
         }
         
-        console.log('AI가 유사 모임을 찾지 못하여, 신규 모임을 생성합니다.');
+        console.log('AI가 유사 모임을 찾지 못했거나, 본인 모임만 추천되어 신규 모임을 생성합니다.');
         const newMeeting = new Meeting({
             title, description, coverImage, category, location, date, maxParticipants, host,
             participants: [host]
@@ -129,7 +145,6 @@ router.post('/', verifyToken, async (req, res) => {
             console.error("AI 서버(Pinecone)에 모임 추가 중 오류:", aiError.message);
         }
         
-        // Case 2: 추천할 모임이 없을 때 -> 'created' 신호와 함께 생성된 모임 정보 전송
         res.status(201).json({
             action: 'created',
             meeting: savedMeeting
@@ -140,6 +155,7 @@ router.post('/', verifyToken, async (req, res) => {
         res.status(500).json({ message: '모임 생성 중 서버 오류가 발생했습니다.' });
     }
 });
+
 
 // "무시하고 생성" 요청을 처리하는 API (변경 없음)
 router.post('/force-create', verifyToken, async (req, res) => {
@@ -176,8 +192,7 @@ router.post('/force-create', verifyToken, async (req, res) => {
     }
 });
 
-
-// --- (GET, DELETE, 참여/취소 등 다른 라우터는 변경 없음) ---
+// --- (DELETE, 참여/취소 등 다른 라우터는 변경 없음) ---
 // 모임 삭제 API
 router.delete('/:id', verifyToken, async (req, res) => {
     try {
@@ -264,6 +279,5 @@ router.post('/:id/leave', verifyToken, async (req, res) => {
         res.status(500).json({ message: '서버 오류가 발생했습니다.' });
     }
 });
-
 
 module.exports = router;
