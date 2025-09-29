@@ -3,7 +3,7 @@ const express = require('express');
 const router = express.Router();
 const Post = require('../models/Post');
 const jwt = require('jsonwebtoken');
-const { marked } = require('marked');
+
 
 // ❗ S3 클라이언트는 환경 변수가 모두 있을 때만 초기화하여 오류를 방지합니다.
 const s3Client = (process.env.AWS_BUCKET_NAME && process.env.AWS_REGION && process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY)
@@ -64,6 +64,7 @@ router.get('/:id', async (req, res) => {
       await post.save();
     }
 
+    const { marked } = await import('marked');
     const htmlContent = marked.parse(post.content || '');
     const responseData = { ...post.toObject(), renderedContent: htmlContent };
     res.json(responseData);

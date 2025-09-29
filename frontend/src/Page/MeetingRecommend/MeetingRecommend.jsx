@@ -26,7 +26,7 @@ const MeetingRecommend = () => {
             await Swal.fire({
                 icon: 'success',
                 title: '성공!',
-                text: '새로운 모임이 만들어졌습니다!',
+                text: '새로운 모임이 만들어졌습니다!!',
                 timer: 1500,
                 showConfirmButton: false
             });
@@ -59,7 +59,12 @@ const MeetingRecommend = () => {
                         <div key={rec.meeting_id} className="bg-white p-5 rounded-lg shadow-md transition-all hover:shadow-xl hover:scale-105 flex items-center justify-between">
                             <div>
                                 <h3 className="text-xl font-semibold text-gray-900">{rec.title}</h3>
-                                <p className="text-sm text-gray-500 mt-1">AI 분석 유사도: {Math.round(rec.score * 100)}%</p>
+                                {/* 👇 --- [수정] rec.score가 유효한 숫자일 때만 유사도 표시 --- 👇 */}
+                                {rec.score && !isNaN(rec.score) && (
+                                    <p className="text-sm text-gray-500 mt-1">
+                                        AI 분석 유사도: {Math.round(rec.score * 100)}%
+                                    </p>
+                                )}
                             </div>
                             <button 
                                 onClick={() => navigate(`/meetings/${rec.meeting_id}`)}
@@ -85,5 +90,4 @@ const MeetingRecommend = () => {
     );
 };
 
-// 👇 --- [수정] 이 줄을 파일 맨 끝에 추가해주세요! --- 👇
 export default MeetingRecommend;
