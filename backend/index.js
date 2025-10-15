@@ -12,7 +12,8 @@ const postRoutes = require("./routes/post");
 const uploadRoutes = require("./routes/upload");
 const surveyRoutes = require("./routes/survey");
 const meetingRoutes = require("./routes/meeting");
-const statsRoutes = require("./routes/stats"); // 👈 [추가] 통계 라우트 불러오기
+const statsRoutes = require("./routes/stats");
+const adminRoutes = require("./routes/admin"); // 👈 [추가] 관리자 라우트 불러오기
 
 app.use(cors({
     origin: "http://localhost:5173",
@@ -29,7 +30,8 @@ app.use("/api/post", postRoutes);
 app.use("/api/upload", uploadRoutes);
 app.use("/api/survey", surveyRoutes);
 app.use("/api/meetings", meetingRoutes);
-app.use("/api/stats", statsRoutes); // 👈 [추가] 통계 API 경로 등록
+app.use("/api/stats", statsRoutes);
+app.use("/api/admin", adminRoutes); // 👈 [추가] 관리자 API 경로 등록
 
 app.get("/", (req, res) => {
   res.send("Hello world");
