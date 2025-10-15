@@ -8,9 +8,10 @@ import { SiNaver } from 'react-icons/si';
 
 
 const Login = () => {
-    const [loginType, setLoginType] = useState('general'); // 'general' 또는 'admin'
+    // 'general' 또는 'admin' 상태를 저장하여 현재 선택된 탭을 관리합니다.
+    const [loginType, setLoginType] = useState('general'); 
     const [formData, setFormData] = useState({
-        username: '', // 백엔드 API에 맞게 email 대신 username 사용
+        username: '',
         password: '',
     });
     const [error, setError] = useState('');
@@ -25,7 +26,10 @@ const Login = () => {
         e.preventDefault();
         setError('');
 
-        const endpoint = loginType === 'general' ? '/api/auth/login' : '/api/admin/login'; // 관리자 로그인 경로 확인 필요
+        // <<< 중요: loginType에 따라 일반 사용자 또는 관리자 API로 요청을 보냅니다.
+        const endpoint = loginType === 'general' 
+            ? '/api/auth/login' 
+            : '/api/admin/login'; // 관리자 로그인 API 경로
         
         try {
             const response = await axios.post(endpoint, formData, { withCredentials: true });
@@ -39,7 +43,7 @@ const Login = () => {
                 showConfirmButton: false
             });
 
-            // 관리자 로그인 성공 시 관리자 페이지로, 일반 사용자는 메인 페이지로 이동
+            // <<< 중요: 관리자는 관리자 페이지로, 일반 사용자는 메인 페이지로 이동시킵니다.
             navigate(loginType === 'admin' ? '/admin/posts' : '/');
 
         } catch (err) {
@@ -68,7 +72,7 @@ const Login = () => {
                 <div className="bg-white py-8 px-6 sm:px-10 shadow-xl rounded-2xl">
                     <h2 className="text-center text-3xl font-bold text-gray-800 mb-6">로그인</h2>
 
-                    {/* 로그인 타입 선택 탭 */}
+                    {/* 로그인 타입 선택 탭: 클릭 시 loginType 상태가 변경됩니다. */}
                     <div className="flex mb-6">
                         <div onClick={() => setLoginType('general')} className={getTabClassName('general')}>
                             일반 로그인
@@ -78,11 +82,12 @@ const Login = () => {
                         </div>
                     </div>
                     
+                    {/* 아래 폼은 loginType 값과 상관없이 동일한 UI를 보여줍니다. */}
                     <form className="space-y-6" onSubmit={handleSubmit}>
                         <div>
                             <label className="text-sm font-medium text-gray-700">이메일</label>
                             <input 
-                                name="username" // 백엔드 API에 맞게 email 대신 username 사용
+                                name="username"
                                 type="text" 
                                 required 
                                 value={formData.username} 
