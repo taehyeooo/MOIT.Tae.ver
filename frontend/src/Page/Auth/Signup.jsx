@@ -4,14 +4,13 @@ import axios from 'axios';
 import Swal from 'sweetalert2';
 
 const Signup = () => {
-    // 'user' 또는 'admin' 역할을 관리하는 상태
     const [role, setRole] = useState('user'); 
     const [formData, setFormData] = useState({
         username: '',
         email: '',
         password: '',
         confirmPassword: '',
-        adminKey: '' // 관리자 등록 키를 위한 상태 추가
+        adminKey: '' // 관리자 등록 키를 위한 상태
     });
     const [error, setError] = useState('');
     const navigate = useNavigate();
@@ -30,16 +29,19 @@ const Signup = () => {
         }
 
         try {
-            // 서버로 보낼 데이터에 role과 adminKey 포함
+            // 서버로 보낼 데이터 객체
             const postData = {
                 username: formData.username,
                 email: formData.email,
                 password: formData.password,
-                role: role,
-                adminKey: formData.adminKey 
+                role: role, // 'user' 또는 'admin' 역할
+                adminKey: formData.adminKey, // 관리자 등록 키
+                name: formData.username, // User 모델에 맞게 name, nickname 추가
+                nickname: formData.username
             };
             
-            await axios.post('/api/auth/register', postData, { withCredentials: true });
+            // 백엔드의 회원가입 API(/api/auth/signup)로 데이터 전송
+            await axios.post('/api/auth/signup', postData);
 
             await Swal.fire({
                 icon: 'success',
@@ -51,12 +53,13 @@ const Signup = () => {
             navigate('/login');
 
         } catch (err) {
+            // 서버에서 에러가 발생하면 메시지를 표시
             const message = err.response?.data?.message || '회원가입 중 오류가 발생했습니다.';
             setError(message);
         }
     };
     
-    // 로그인 페이지와 동일한 탭 스타일링 함수
+    // '일반 회원', '관리자' 탭 스타일을 결정하는 함수
     const getTabClassName = (type) => {
         return `w-1/2 py-3 text-center cursor-pointer font-semibold transition-all duration-300 ${
             role === type
@@ -76,7 +79,6 @@ const Signup = () => {
                 <div className="bg-white py-8 px-6 sm:px-10 shadow-xl rounded-2xl">
                     <h2 className="text-center text-3xl font-bold text-gray-800 mb-6">회원가입</h2>
 
-                    {/* 회원가입 타입 선택 탭 */}
                     <div className="flex mb-6">
                         <div onClick={() => setRole('user')} className={getTabClassName('user')}>
                             일반 회원
@@ -88,14 +90,14 @@ const Signup = () => {
 
                     <form className="space-y-5" onSubmit={handleSubmit}>
                         <div>
-                            <label className="text-sm font-medium text-gray-700">이름 (Username)</label>
+                            <label className="text-sm font-medium text-gray-700">이름 (아이디)</label>
                             <input 
                                 name="username" 
                                 type="text" 
                                 required 
                                 value={formData.username}
                                 onChange={handleChange}
-                                placeholder="사용자 이름"
+                                placeholder="사용자 아이디"
                                 className="mt-1 w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"/>
                         </div>
                         <div>
@@ -132,21 +134,21 @@ const Signup = () => {
                                 className="mt-1 w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"/>
                         </div>
                         
-                        {/* 관리자 탭 선택 시에만 이 입력창이 보입니다. */}
+                        {/* '관리자' 탭을 선택했을 때만 인증 코드 입력창이 나타납니다. */}
                         {role === 'admin' && (
                             <div>
                                 <label className="text-sm font-medium text-gray-700">관리자 등록 키</label>
                                 <input 
                                     name="adminKey" 
                                     type="password" 
-                                    required 
+                                    required={role === 'admin'} 
                                     value={formData.adminKey} 
-                                    onChange={handleChange}
+                                    onChange={handleChange} 
                                     placeholder="Admin Registration Key"
                                     className="mt-1 w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"/>
                             </div>
                         )}
-                        
+
                         {error && <p className="text-sm text-red-600 text-center font-semibold pt-2">{error}</p>}
 
                         <div className="pt-2">
