@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const bcrypt = require('bcrypt'); // 'bcryptjs'를 다시 'bcrypt'로 수정했습니다.
+const bcrypt = require('bcrypt'); // 'bcryptjs'가 아닌 'bcrypt'를 사용합니다.
 const jwt = require('jsonwebtoken');
 const axios = require('axios');
 const User = require('../models/User');
@@ -9,7 +9,7 @@ const { verifyToken } = require('../utils/auth');
 
 /**
  * ---------------------------------
- * POST /api/auth/register - 회원가입
+ * POST /api/auth/register - 회원가입 (관리자 키 검증 추가)
  * ---------------------------------
  */
 router.post('/register', async (req, res) => {
@@ -42,7 +42,7 @@ router.post('/register', async (req, res) => {
             email, 
             password: hashedPassword, 
             role,
-            name: username,      // name과 nickname을 username으로 초기화
+            name: username,
             nickname: username 
         });
         
@@ -58,7 +58,7 @@ router.post('/register', async (req, res) => {
 
 /**
  * ---------------------------------
- * POST /api/auth/login - 로그인
+ * POST /api/auth/login - 로그인 (JWT에 role 추가)
  * ---------------------------------
  */
 router.post('/login', async (req, res) => {
@@ -80,17 +80,14 @@ router.post('/login', async (req, res) => {
 
     const isValidPassword = await bcrypt.compare(password, user.password);
     if (!isValidPassword) {
+      // (비밀번호 오류 처리 로직은 기존과 동일)
       user.failedLoginAttempts += 1;
       user.lastLoginAttempt = new Date();
-
       if (user.failedLoginAttempts >= 5) {
         user.isActive = false;
         await user.save();
-        return res.status(403).json({
-          message: '비밀번호를 5회 이상 틀려 계정이 비활성화되었습니다.',
-        });
+        return res.status(403).json({ message: '비밀번호를 5회 이상 틀려 계정이 비활성화되었습니다.' });
       }
-
       await user.save();
       return res.status(401).json({
         message: '아이디 또는 비밀번호가 올바르지 않습니다.',
@@ -98,6 +95,7 @@ router.post('/login', async (req, res) => {
       });
     }
     
+    // (로그인 성공 처리 로직은 기존과 동일)
     user.failedLoginAttempts = 0;
     user.lastLoginAttempt = new Date();
     user.isLoggedIn = true;
@@ -136,11 +134,9 @@ router.post('/login', async (req, res) => {
   }
 });
 
-/**
- * ----------------------------------------------------
- * POST /api/auth/verify-token - 토큰 검증 (상태 유지)
- * ----------------------------------------------------
- */
+
+// --- (이하 /verify-token, /logout 등 다른 코드는 기존과 동일하게 유지됩니다.) ---
+
 router.post("/verify-token", async (req, res) => {
     const token = req.cookies.token;
     if (!token) {
@@ -160,11 +156,6 @@ router.post("/verify-token", async (req, res) => {
     }
 });
 
-/**
- * ---------------------------------
- * POST /api/auth/logout - 로그아웃
- * ---------------------------------
- */
 router.post('/logout', async (req, res) => {
   try {
     const token = req.cookies.token;
@@ -185,11 +176,6 @@ router.post('/logout', async (req, res) => {
   }
 });
 
-/**
- * ---------------------------------
- * GET /api/auth/mypage - 마이페이지 데이터 조회
- * ---------------------------------
- */
 router.get('/mypage', verifyToken, async (req, res) => {
   try {
     const userId = req.user.userId;
@@ -218,11 +204,6 @@ router.get('/mypage', verifyToken, async (req, res) => {
   }
 });
 
-/**
- * ---------------------------------
- * PUT /api/auth/profile - 프로필 정보 수정
- * ---------------------------------
- */
 router.put('/profile', verifyToken, async (req, res) => {
     try {
         const { nickname, email, currentPassword, newPassword } = req.body;
@@ -233,7 +214,6 @@ router.put('/profile', verifyToken, async (req, res) => {
             return res.status(404).json({ message: '사용자를 찾을 수 없습니다.' });
         }
 
-        // 닉네임, 이메일 중복 확인
         if (nickname && nickname !== user.nickname) {
             const existingNickname = await User.findOne({ nickname: nickname, _id: { $ne: userId } });
             if (existingNickname) {
@@ -250,7 +230,6 @@ router.put('/profile', verifyToken, async (req, res) => {
             user.email = email;
         }
 
-        // 비밀번호 변경 로직
         if (newPassword) {
             if (!currentPassword) {
                 return res.status(400).json({ message: '현재 비밀번호를 입력해주세요.' });
@@ -274,12 +253,6 @@ router.put('/profile', verifyToken, async (req, res) => {
     }
 });
 
-
-/**
- * ---------------------------------------
- * DELETE /api/auth/delete/:userId - 계정 삭제
- * ---------------------------------------
- */
 router.delete('/delete/:userId', async (req, res) => {
     try {
       const user = await User.findByIdAndDelete(req.params.userId);
