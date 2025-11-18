@@ -1,19 +1,28 @@
 const mongoose = require('mongoose');
 
 const meetingSchema = new mongoose.Schema({
-    title: { type: String, required: true },
+    title: { type: String, required: true, trim: true },
+    description: { type: String, required: true },
+    coverImage: { type: String }, // 필수 항목이 아님
     category: { type: String, required: true },
-    host: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-    members: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
-    
-    // --- [신규] '새 모임 만들기' 폼에서 추가된 필드 ---
-    description: { type: String, default: '' },
-    location: { type: String, default: '온라인' },
-    maxParticipants: { type: Number, default: 10, min: 2 },
-    meetingTime: { type: Date, default: Date.now },
-    imageUrl: { type: String, default: null }, // 이미지 파일 경로 저장
-    // ---
+    location: { type: String, required: true },
+    date: { type: Date, required: true },
+    maxParticipants: { type: Number, required: true, min: 2 },
+    host: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true
+    },
+    participants: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
+    }],
+}, { timestamps: true });
 
-}, { timestamps: true }); // (timestamps: true는 createdAt, updatedAt을 자동 생성)
+meetingSchema.path('participants').validate(function(value) {
+    return value.length <= this.maxParticipants;
+}, '참여 인원이 가득 찼습니다.');
 
-module.exports = mongoose.model('Meeting', meetingSchema);
+const Meeting = mongoose.model('Meeting', meetingSchema);
+
+module.exports = Meeting;

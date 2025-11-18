@@ -61,10 +61,13 @@ router.post('/recommend', verifyToken, async (req, res) => {
     try {
         const { answers } = req.body;
         
-        const aiAgentUrl = 'http://127.0.0.1:8000/agent/invoke';
+        // [수정] 환경 변수 사용 (없으면 기본값 8000번 포트)
+        const aiBaseUrl = process.env.AI_SERVER_URL || 'http://localhost:8000';
+        const aiAgentUrl = `${aiBaseUrl}/agent/invoke`;
+        
         console.log(`AI 에이전트 서버(${aiAgentUrl})로 추천 요청을 보냅니다...`);
 
-        // 👇 --- [수정] answers 객체에서 올바른 키(Q6, Q7 등)로 값을 읽어오도록 수정합니다. --- 👇
+        // 👇 --- answers 객체에서 올바른 키(Q6, Q7 등)로 값을 읽어오도록 변환 --- 👇
         const budgetMap = {
             '5만원 미만': 50000,
             '5~10만원': 100000,
@@ -118,7 +121,7 @@ router.post('/recommend', verifyToken, async (req, res) => {
                 return res.status(500).json({ message: `AI 에이전트가 오류를 반환했습니다: ${error.response.status}` });
             } 
             else if (error.request) {
-                console.error("AI 에이전트로부터 응답이 없습니다. uvicorn 서버가 실행 중인지, 주소가 올바른지 확인해주세요.");
+                console.error("AI 에이전트로부터 응답이 없습니다. Python 서버(main_V3.py)가 8000번 포트에서 실행 중인지 확인해주세요.");
                 return res.status(500).json({ message: "AI 추천 에이전트에 연결할 수 없습니다." });
             }
         }

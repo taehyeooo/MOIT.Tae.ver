@@ -1,89 +1,50 @@
-const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
+const express = require('express');
+const router = express.Router();
 const multer = require('multer');
+const path = require('path');
+const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
+const { verifyToken } = require('../utils/auth');
 
-const router = require('express').Router();
-
-const s3Client = new S3Client({
-  region: process.env.AWS_REGION,
-  credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-  }
+// 1. 로컬 저장소 설정 (개발 환경용)
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        cb(null, 'uploads/');
+    },
+    filename: function (req, file, cb) {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        cb(null, uniqueSuffix + path.extname(file.originalname));
+    }
 });
 
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: {
-    fileSize: 5 * 1024 * 1024 
-  }
+const upload = multer({ storage: storage });
+
+// 2. 이미지 업로드 API (단일 파일)
+router.post('/', verifyToken, upload.single('file'), (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ message: '파일이 업로드되지 않았습니다.' });
+        }
+        // 업로드된 파일의 접근 URL 반환
+        const fileUrl = `/uploads/${req.file.filename}`;
+        res.json({ url: fileUrl });
+    } catch (error) {
+        console.error("이미지 업로드 에러:", error);
+        res.status(500).json({ message: '이미지 업로드 중 오류가 발생했습니다.' });
+    }
 });
 
-const fileUpload = multer({
-  storage: multer.memoryStorage(),
-  limits: {
-    fileSize: 50 * 1024 * 1024 
-  }
-});
-
-const verifyToken = (req, res, next) => {
-  const token = req.cookies.token;
-  if (!token) {
-    return res.status(401).json({ message: '인증되지 않은 요청입니다.' });
-  }
-  next();
-};
-
-router.post('/image', verifyToken, upload.single('image'), async (req, res) => {
-  try {
-    const { v4: uuidv4 } = await import('uuid');
-    const file = req.file;
-    const fileExtension = file.originalname.split('.').pop();
-    const fileName = `${uuidv4()}.${fileExtension}`;
-
-    const uploadParams = {
-      Bucket: process.env.AWS_BUCKET_NAME,
-      Key: `post-images/${fileName}`,
-      Body: file.buffer,
-      ContentType: file.mimetype,
-    };
-
-    const command = new PutObjectCommand(uploadParams);
-    await s3Client.send(command);
-    
-    const imageUrl = `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/post-images/${fileName}`;
-    res.json({ imageUrl });
-  } catch (error) {
-    console.error('S3 upload error:', error);
-    res.status(500).json({ error: "Failed to upload image" });
-  }
-});
-
-router.post('/file', verifyToken, fileUpload.single('file'), async (req, res) => {
-  try {
-    const file = req.file;
-    const originalName = req.body.originalName;
-    const decodedFileName = decodeURIComponent(originalName);
-
-    const uploadParams = {
-      Bucket: process.env.AWS_BUCKET_NAME,
-      Key: `post-files/${decodedFileName}`,
-      Body: file.buffer,
-      ContentType: file.mimetype,
-      ContentDisposition: `attachment; filename*=UTF-8''${encodeURIComponent(decodedFileName)}`,
-    };
-
-    const command = new PutObjectCommand(uploadParams);
-    await s3Client.send(command);
-    
-    const fileUrl = `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/post-files/${decodedFileName}`;
-    res.json({ 
-      fileUrl,
-      originalName: decodedFileName
-    });
-  } catch (error) {
-    console.error('S3 upload error:', error);
-    res.status(500).json({ error: "Failed to upload file" });
-  }
+// 3. 다중 이미지 업로드 API (필요시 사용)
+router.post('/multiple', verifyToken, upload.array('files', 5), (req, res) => {
+    try {
+        if (!req.files || req.files.length === 0) {
+            return res.status(400).json({ message: '파일이 업로드되지 않았습니다.' });
+        }
+        const fileUrls = req.files.map(file => `/uploads/${file.filename}`);
+        res.json({ urls: fileUrls });
+    } catch (error) {
+        console.error("다중 이미지 업로드 에러:", error);
+        res.status(500).json({ message: '이미지 업로드 중 오류가 발생했습니다.' });
+    }
 });
 
 module.exports = router;

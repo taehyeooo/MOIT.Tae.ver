@@ -1,204 +1,130 @@
-const { S3Client, DeleteObjectCommand } = require('@aws-sdk/client-s3');
 const express = require('express');
 const router = express.Router();
 const Post = require('../models/Post');
-const jwt = require('jsonwebtoken');
+const { verifyToken } = require('../utils/auth');
+const multer = require('multer');
+const path = require('path');
 
+// --- Multer 설정 (이미지 업로드용) ---
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        cb(null, 'uploads/'); // 파일이 저장될 경로
+    },
+    filename: function (req, file, cb) {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        cb(null, uniqueSuffix + path.extname(file.originalname)); // 파일명 중복 방지
+    }
+});
 
-// ❗ S3 클라이언트는 환경 변수가 모두 있을 때만 초기화하여 오류를 방지합니다.
-const s3Client = (process.env.AWS_BUCKET_NAME && process.env.AWS_REGION && process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY)
-  ? new S3Client({
-      region: process.env.AWS_REGION,
-      credentials: {
-        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-      }
-    })
-  : null;
+const upload = multer({ storage: storage });
 
-const verifyToken = (req, res, next) => {
-  const token = req.cookies.token;
-  if (!token) {
-    return res.status(401).json({ message: '인증이 필요합니다.' });
-  }
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded;
-    next();
-  } catch (error) {
-    return res.status(401).json({ message: '유효하지 않은 토큰입니다.' });
-  }
-};
+// 1. 게시글 작성 (이미지 포함 가능)
+router.post('/', verifyToken, upload.array('images', 5), async (req, res) => {
+    try {
+        const { title, content } = req.body;
+        const files = req.files; // 업로드된 파일 정보
 
-// ... (GET, POST, PUT 라우터는 이전과 동일하게 유지) ...
+        // 가장 마지막 게시글 번호 찾기 (number 필드 자동 증가)
+        const lastPost = await Post.findOne().sort({ number: -1 });
+        const nextNumber = lastPost ? lastPost.number + 1 : 1;
 
+        // 파일 URL 생성 (서버 주소 + 파일명)
+        const fileUrls = files ? files.map(file => `/uploads/${file.filename}`) : [];
+
+        const newPost = new Post({
+            number: nextNumber,
+            title,
+            content,
+            fileUrl: fileUrls,
+            // 작성자 정보는 필요하다면 req.user.userId로 추가 (모델 수정 필요)
+        });
+
+        await newPost.save();
+        res.status(201).json({ message: '게시글이 작성되었습니다.', post: newPost });
+    } catch (error) {
+        console.error("게시글 작성 에러:", error);
+        res.status(500).json({ message: '서버 오류가 발생했습니다.' });
+    }
+});
+
+// 2. 게시글 목록 조회 (페이지네이션 포함)
 router.get('/', async (req, res) => {
-  try {
-    const posts = await Post.find().sort({ createdAt: -1 });
-    res.json(posts);
-  } catch (error) {
-    res.status(500).json({ message: '서버 오류가 발생했습니다.' });
-  }
+    try {
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const skip = (page - 1) * limit;
+
+        const posts = await Post.find()
+            .sort({ createdAt: -1 }) // 최신순 정렬
+            .skip(skip)
+            .limit(limit);
+
+        const totalPosts = await Post.countDocuments();
+
+        res.json({
+            posts,
+            currentPage: page,
+            totalPages: Math.ceil(totalPosts / limit),
+            totalPosts
+        });
+    } catch (error) {
+        console.error("게시글 목록 조회 에러:", error);
+        res.status(500).json({ message: '서버 오류가 발생했습니다.' });
+    }
 });
 
+// 3. 특정 게시글 조회
 router.get('/:id', async (req, res) => {
-  try {
-    const post = await Post.findById(req.params.id);
-    if (!post) {
-      return res.status(404).json({ message: '게시글을 찾을 수 없습니다.' });
-    }
-    
-    const ip = req.headers["x-forwarded-for"] || req.socket.remoteAddress || req.ip;
-    const userAgent = req.headers['user-agent'];
-    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    const hasRecentView = post.viewLogs.some(
-      log =>
-        log.ip === ip &&
-        log.userAgent === userAgent &&
-        new Date(log.timestamp) > oneDayAgo
-    );
+    try {
+        const post = await Post.findById(req.params.id);
+        if (!post) {
+            return res.status(404).json({ message: '게시글을 찾을 수 없습니다.' });
+        }
 
-    if (!hasRecentView) {
-      post.views += 1;
-      post.viewLogs.push({ ip, userAgent, timestamp: new Date() });
-      await post.save();
-    }
+        // 조회수 증가
+        post.views += 1;
+        await post.save();
 
-    const { marked } = await import('marked');
-    const htmlContent = marked.parse(post.content || '');
-    const responseData = { ...post.toObject(), renderedContent: htmlContent };
-    res.json(responseData);
-  } catch (error) {
-    console.error('게시글 조회 에러:', error);
-    res.status(500).json({ 
-      message: '서버 오류가 발생했습니다.',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
-  }
+        res.json(post);
+    } catch (error) {
+        console.error("게시글 조회 에러:", error);
+        res.status(500).json({ message: '서버 오류가 발생했습니다.' });
+    }
 });
 
-router.post('/', verifyToken, async (req, res) => {
-  try {
-    const { title, content, fileUrl } = req.body;
-    const latestPost = await Post.findOne().sort({ number: -1 });
-    const nextNumber = latestPost ? latestPost.number + 1 : 1;
-    const post = new Post({ number: nextNumber, title, content, fileUrl });
-    await post.save();
-    res.status(201).json(post);
-  } catch (error) {
-    res.status(500).json({ message: '서버 오류가 발생했습니다.' });
-  }
-});
-
+// 4. 게시글 수정
 router.put('/:id', verifyToken, async (req, res) => {
-  try {
-    const { title, content, fileUrl } = req.body;
-    const post = await Post.findById(req.params.id);
-    if (!post) {
-      return res.status(404).json({ message: '게시글을 찾을 수 없습니다.' });
-    }
+    try {
+        const { title, content } = req.body;
+        const post = await Post.findByIdAndUpdate(
+            req.params.id,
+            { title, content, updatedAt: Date.now() },
+            { new: true } // 업데이트된 문서 반환
+        );
 
-    if (s3Client) {
-        const imgRegex = /https:\/\/[^"']*?\.(?:png|jpg|jpeg|gif|PNG|JPG|JPEG|GIF)/g;
-        const oldContentImages = post.content.match(imgRegex) || [];
-        const newContentImages = content.match(imgRegex) || [];
-        const deletedImages = oldContentImages.filter(url => !newContentImages.includes(url));
-        const deletedFiles = (post.fileUrl || []).filter(url => !(fileUrl || []).includes(url));
-        
-        const getS3KeyFromUrl = (url) => {
-          try {
-            const urlObj = new URL(url);
-            return decodeURIComponent(urlObj.pathname.substring(1));
-          } catch (error) {
-            console.error('URL 파싱 에러:', error);
-            return null;
-          }
-        };
-
-        const allDeletedFiles = [...deletedImages, ...deletedFiles];
-        for (const fileUrlToDelete of allDeletedFiles) {
-          const key = getS3KeyFromUrl(fileUrlToDelete);
-          if (key) {
-            try {
-              await s3Client.send(new DeleteObjectCommand({
-                Bucket: process.env.AWS_BUCKET_NAME,
-                Key: key
-              }));
-              console.log('S3 파일 삭제 완료:', key);
-            } catch (error) {
-              console.error('S3 파일 삭제 에러:', error);
-            }
-          }
+        if (!post) {
+            return res.status(404).json({ message: '게시글을 찾을 수 없습니다.' });
         }
+
+        res.json({ message: '게시글이 수정되었습니다.', post });
+    } catch (error) {
+        console.error("게시글 수정 에러:", error);
+        res.status(500).json({ message: '서버 오류가 발생했습니다.' });
     }
-    
-    post.title = title;
-    post.content = content;
-    post.fileUrl = fileUrl;
-    post.updatedAt = Date.now();
-    
-    await post.save();
-    res.json(post);
-  } catch (error) {
-    console.error('게시글 수정 에러:', error);
-    res.status(500).json({ message: '서버 오류가 발생했습니다.' });
-  }
 });
 
-// DELETE /:id - 게시글 삭제
+// 5. 게시글 삭제
 router.delete('/:id', verifyToken, async (req, res) => {
-  try {
-    const post = await Post.findById(req.params.id);
-    if (!post) {
-      return res.status(404).json({ message: '게시글을 찾을 수 없습니다.' });
-    }
-
-    // S3에서 삭제할 파일 목록을 미리 준비합니다.
-    const filesToDeleteFromS3 = [];
-    if (s3Client) {
-      const imgRegex = /https:\/\/[^"']*?\.(?:png|jpg|jpeg|gif|PNG|JPG|JPEG|GIF)/g;
-      const contentImages = post.content.match(imgRegex) || [];
-      const allFiles = [...contentImages, ...(post.fileUrl || [])];
-
-      const getS3KeyFromUrl = (url) => {
-        try {
-          const urlObj = new URL(url);
-          return decodeURIComponent(urlObj.pathname.substring(1));
-        } catch (error) {
-          console.error('URL 파싱 에러:', error); return null;
+    try {
+        const post = await Post.findByIdAndDelete(req.params.id);
+        if (!post) {
+            return res.status(404).json({ message: '게시글을 찾을 수 없습니다.' });
         }
-      };
-      allFiles.forEach(url => {
-        const key = getS3KeyFromUrl(url);
-        if (key) filesToDeleteFromS3.push(key);
-      });
+        res.json({ message: '게시글이 삭제되었습니다.' });
+    } catch (error) {
+        console.error("게시글 삭제 에러:", error);
+        res.status(500).json({ message: '서버 오류가 발생했습니다.' });
     }
-    
-    // ❗ 데이터베이스에서 먼저 문서를 삭제합니다.
-    await Post.findByIdAndDelete(req.params.id);
-    
-    // ❗ DB 삭제 성공 응답을 클라이언트에 먼저 보냅니다.
-    res.json({ message: '게시글이 성공적으로 삭제되었습니다.' });
-
-    // 응답을 보낸 후, 백그라운드에서 S3 파일 삭제를 시도합니다.
-    if (s3Client && filesToDeleteFromS3.length > 0) {
-      for (const key of filesToDeleteFromS3) {
-        try {
-          await s3Client.send(new DeleteObjectCommand({
-            Bucket: process.env.AWS_BUCKET_NAME,
-            Key: key
-          }));
-          console.log('S3 파일 삭제 성공:', key);
-        } catch (error) {
-          // 이 오류는 사용자에게 보여주지 않고 서버 로그에만 남깁니다.
-          console.error('S3 파일 삭제 에러:', key, error);
-        }
-      }
-    }
-  } catch (error) {
-    console.error('게시글 삭제 에러:', error);
-    res.status(500).json({ message: '서버 오류가 발생했습니다.' });
-  }
 });
 
 module.exports = router;

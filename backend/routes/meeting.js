@@ -1,205 +1,284 @@
 const express = require('express');
 const router = express.Router();
 const Meeting = require('../models/Meeting');
-const { verifyToken } = require('../utils/auth'); // (기존 auth.js의 verifyUser)
+const { verifyToken } = require('../utils/auth');
+const axios = require('axios');
 
-// --- [신규] 추가된 모듈 ---
-const multer = require('multer');
-const path = require('path');
-const fs = require('fs');
-const { spawn } = require('child_process'); // Python 스크립트 실행용
-const SurveyResult = require('../models/SurveyResult'); // (이전 단계에서 생성한 설문 결과 모델)
-// ---
+// AI 서버 주소 (Python 서버 포트와 일치해야 함)
+const AI_AGENT_URL = process.env.AI_SERVER_URL || 'http://localhost:8000';
 
-// --- [신규] Multer 설정 (이미지 업로드) ---
-// (upload.js와 유사하게 설정)
-const uploadDir = 'uploads/'; // /backend/uploads/
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir);
-}
-
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, uploadDir);
-  },
-  filename: function (req, file, cb) {
-    // 파일 이름: fieldname-timestamp.확장자 (예: meetingImage-1678886400000.png)
-    cb(null, file.fieldname + '-' + Date.now() + path.extname(file.originalname));
-  }
-});
-
-const upload = multer({ 
-    storage: storage,
-    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB 제한
-    fileFilter: (req, file, cb) => {
-        // 이미지 파일만 허용 (image/jpeg, image/png 등)
-        if (file.mimetype.startsWith('image/')) {
-            cb(null, true);
-        } else {
-            cb(new Error('이미지 파일만 업로드 가능합니다.'), false);
-        }
-    }
-});
-// --- Multer 설정 끝 ---
-
-
-// --- 기존 라우트 (변경 없음): GET / (모든 모임 조회) ---
+// 모든 모임 목록 조회
 router.get('/', async (req, res) => {
     try {
-        const meetings = await Meeting.find().populate('host', 'username').populate('members', 'username');
+        const meetings = await Meeting.find()
+            .populate('host', 'nickname')
+            .populate('participants')
+            .sort({ createdAt: -1 });
         res.json(meetings);
     } catch (error) {
-        res.status(500).json({ message: 'Error fetching meetings' });
+        res.status(500).json({ message: '서버 오류가 발생했습니다.' });
+    }
+});
+
+// 마감 임박 모임 조회 API
+router.get('/closing-soon', async (req, res) => {
+    try {
+        const now = new Date();
+        const meetings = await Meeting.aggregate([
+            {
+                $match: {
+                    date: { $gte: now }, 
+                    $expr: { $lt: [{ $size: "$participants" }, "$maxParticipants"] }
+                }
+            },
+            { $sort: { date: 1 } },
+            { $limit: 4 }
+        ]);
+
+        const populatedMeetings = await Meeting.populate(meetings, [
+            { path: 'host', select: 'nickname' },
+            { path: 'participants', select: 'nickname' }
+        ]);
+
+        res.json(populatedMeetings);
+    } catch (error) {
+        console.error("마감 임박 모임 조회 에러:", error);
+        res.status(500).json({ message: '서버 오류가 발생했습니다.' });
     }
 });
 
 
-// --- [신규] POST / (새 모임 생성, 이미지 업로드 포함) ---
-router.post(
-    '/', 
-    verifyToken, // 1. 로그인 여부 확인
-    upload.single('meetingImage'), // 2. 'meetingImage'라는 이름의 파일을 받아서 처리
-    async (req, res) => {
-        try {
-            // 3. 텍스트 데이터 (req.body)
-            const { title, category, description, location, maxParticipants, meetingTime } = req.body;
-            
-            // 4. (필수) Meeting.js 모델 스키마에 아래 필드들이 정의되어 있어야 합니다.
-            const newMeeting = new Meeting({
-                title,
-                category,
-                description, // (스키마에 추가 필요)
-                location, // (스키마에 추가 필요)
-                maxParticipants: parseInt(maxParticipants, 10), // (스키마에 추가 필요)
-                meetingTime: new Date(meetingTime), // (스키마에 추가 필요)
-                host: req.user.id, // 5. 호스트 정보 (로그인한 사용자)
-                members: [req.user.id], // 호스트는 자동으로 멤버로 추가
-                imageUrl: req.file ? `/${uploadDir}${req.file.filename}` : null // 6. 파일 경로 저장 (파일 없으면 null)
-            });
-
-            const savedMeeting = await newMeeting.save();
-            res.status(201).json(savedMeeting);
-
-        } catch (error) {
-            console.error('모임 생성 에러:', error);
-            if (error.name === 'ValidationError') {
-                // 이 에러는 Meeting.js 스키마에 필드가 없거나, required 필드가 누락될 때 발생합니다.
-                res.status(400).json({ message: '데이터 형식이 올바르지 않습니다.', details: error.errors });
-            } else {
-                res.status(500).json({ message: '서버 오류로 모임 생성에 실패했습니다.' });
-            }
-        }
-    }
-);
-
-
-// --- [수정] GET /recommend (AI 대신 최신순 모임 추천) ---
-router.get(
-    '/recommend',
-    verifyToken, // 1. 로그인 확인
-    async (req, res) => {
-        try {
-            // 2. AI 스크립트 대신 간단한 추천 스크립트 호출
-            const pythonScriptPath = path.join(__dirname, '..', 'recommendAI', 'simple_recommend.py'); 
-            
-            // 3. Python 자식 프로세스 실행 (입력값 없이)
-            const pythonProcess = spawn('python', [pythonScriptPath]);
-            
-            let recommendedData = ''; // Python 스크립트의 표준 출력 (성공)
-            let errorData = ''; // Python 스크립트의 표준 에러 (실패)
-
-            pythonProcess.stdout.on('data', (data) => {
-                recommendedData += data.toString();
-            });
-
-            pythonProcess.stderr.on('data', (data) => {
-                errorData += data.toString();
-            });
-
-            // 4. Python 스크립트 종료 시 (기존 로직과 거의 동일)
-            pythonProcess.on('close', async (code) => {
-                if (code !== 0 || errorData) {
-                    console.error(`Python 스크립트 오류 (Code: ${code}):`, errorData);
-                    // AI 추천 엔진 -> 추천 시스템으로 문구 변경
-                    return res.status(500).json({ message: '추천 시스템 오류가 발생했습니다.' });
-                }
-
-                try {
-                    // 5. Python이 출력한 JSON 파싱 (모임 ID 배열)
-                    const recommendedMeetingIds = JSON.parse(recommendedData);
-                    
-                    if (!Array.isArray(recommendedMeetingIds)) {
-                        throw new Error('추천 응답 형식이 올바르지 않습니다. (배열이 아님)');
-                    }
-
-                    // 6. Mongoose로 추천된 모임 ID 목록을 조회
-                    const recommendedMeetings = await Meeting.find({
-                        '_id': { $in: recommendedMeetingIds }
-                    });
-                    
-                    // 7. 반환된 ID 순서대로 정렬
-                    const sortedMeetings = recommendedMeetings.sort((a, b) => {
-                        return recommendedMeetingIds.indexOf(a._id.toString()) - recommendedMeetingIds.indexOf(b._id.toString());
-                    });
-
-                    res.json(sortedMeetings);
-
-                } catch (parseError) {
-                    console.error('Python 응답 파싱 오류:', parseError, recommendedData);
-                    res.status(500).json({ message: '추천 응답 처리 중 오류가 발생했습니다.' });
-                }
-            });
-
-        } catch (error) {
-            console.error('모임 추천 처리 중 오류:', error);
-            res.status(500).json({ message: '서버 오류로 추천을 받지 못했습니다.' });
-        }
-    }
-);
-
-
-// --- 기존 라우트 (변경 없음): GET /:id (특정 모임 조회) ---
+// 특정 모임 상세 정보 조회 API
 router.get('/:id', async (req, res) => {
     try {
-        const meeting = await Meeting.findById(req.params.id).populate('host', 'username').populate('members', 'username');
+        const meetingId = req.params.id;
+        const meeting = await Meeting.findById(meetingId)
+            .populate('host', 'nickname avatar') 
+            .populate('participants', 'nickname avatar');
+
         if (!meeting) {
-            return res.status(404).json({ message: 'Meeting not found' });
+            return res.status(404).json({ message: '모임을 찾을 수 없습니다.' });
         }
-        res.json(meeting);
+
+        const similarMeetings = await Meeting.find({
+            category: meeting.category,
+            _id: { $ne: meetingId }
+        })
+        .limit(3)
+        .populate('host', 'nickname');
+
+        res.json({ ...meeting.toObject(), similarMeetings });
+
     } catch (error) {
-        res.status(500).json({ message: 'Error fetching meeting' });
+        console.error(`Error fetching meeting ${req.params.id}:`, error);
+        res.status(500).json({ message: '서버 오류가 발생했습니다.' });
     }
 });
 
 
-// --- 기존 라우트 (변경 없음): POST /:id/join (모임 참가) ---
+/**
+ * ------------------------------------------------------------------
+ * [수정] POST / - 새로운 모임 생성 (호스트가 본인인 모임 추천 제외)
+ * ------------------------------------------------------------------
+ */
+router.post('/', verifyToken, async (req, res) => {
+    const { title, description, coverImage, category, location, date, maxParticipants } = req.body;
+    const host = req.user.userId; // 현재 로그인한 사용자(호스트) ID
+
+    try {
+        // AI 서버에 유사 모임 검색 요청
+        const agentResponse = await axios.post(`${AI_AGENT_URL}/agent/invoke`, {
+            user_input: {
+                title,
+                description,
+                time: new Date(date).toLocaleString('ko-KR'),
+                location
+            }
+        });
+
+        const recommendations = JSON.parse(agentResponse.data.final_answer);
+
+        if (recommendations && recommendations.recommendations && recommendations.recommendations.length > 0) {
+            
+            // 👇 --- [수정] 추천 목록에서 본인이 호스트인 모임은 제외하는 로직 --- 👇
+            const recommendedIds = recommendations.recommendations.map(rec => rec.meeting_id);
+            const recommendedMeetingsFromDB = await Meeting.find({ '_id': { $in: recommendedIds } });
+
+            const filteredRecs = recommendations.recommendations.filter(rec => {
+                const meeting = recommendedMeetingsFromDB.find(m => m._id.toString() === rec.meeting_id);
+                // DB에서 찾은 모임의 호스트 ID와 현재 사용자 ID가 다를 경우에만 포함
+                return meeting && meeting.host.toString() !== host;
+            });
+            // ----------------------------------------------------------------
+
+            // 필터링 후에도 추천할 모임이 남아있다면
+            if (filteredRecs.length > 0) {
+                console.log('AI가 추천한 모임 (본인 모임 제외):', filteredRecs);
+                return res.status(200).json({
+                    action: 'recommend',
+                    recommendations: { // 원본 구조 유지
+                        summary: recommendations.summary,
+                        recommendations: filteredRecs
+                    },
+                    newMeetingData: req.body
+                });
+            }
+        }
+        
+        console.log('AI가 유사 모임을 찾지 못했거나, 본인 모임만 추천되어 신규 모임을 생성합니다.');
+        const newMeeting = new Meeting({
+            title, description, coverImage, category, location, date, maxParticipants, host,
+            participants: [host]
+        });
+
+        const savedMeeting = await newMeeting.save();
+        
+        // Pinecone에 모임 정보 추가 요청
+        try {
+            await axios.post(`${AI_AGENT_URL}/meetings/add`, {
+                meeting_id: savedMeeting._id.toString(),
+                title: savedMeeting.title,
+                description: savedMeeting.description,
+                time: new Date(savedMeeting.date).toLocaleString('ko-KR'),
+                location: savedMeeting.location
+            });
+            console.log(`Pinecone에 모임(ID: ${savedMeeting._id}) 추가 요청 성공.`);
+        } catch (aiError) {
+            console.error("AI 서버(Pinecone)에 모임 추가 중 오류:", aiError.message);
+        }
+        
+        res.status(201).json({
+            action: 'created',
+            meeting: savedMeeting
+        });
+
+    } catch (error) {
+        console.error("모임 생성/추천 과정에서 에러 발생:", error);
+        res.status(500).json({ message: '모임 생성 중 서버 오류가 발생했습니다.' });
+    }
+});
+
+
+// "무시하고 생성" 요청을 처리하는 API (변경 없음)
+router.post('/force-create', verifyToken, async (req, res) => {
+    try {
+        console.log('AI 추천 무시하고 강제 생성을 요청받았습니다.');
+        const { title, description, coverImage, category, location, date, maxParticipants } = req.body;
+        const host = req.user.userId;
+
+        const newMeeting = new Meeting({
+            title, description, coverImage, category, location, date, maxParticipants, host,
+            participants: [host]
+        });
+
+        const savedMeeting = await newMeeting.save();
+
+        try {
+            await axios.post(`${AI_AGENT_URL}/meetings/add`, {
+                meeting_id: savedMeeting._id.toString(),
+                title: savedMeeting.title,
+                description: savedMeeting.description,
+                time: new Date(savedMeeting.date).toLocaleString('ko-KR'),
+                location: savedMeeting.location
+            });
+            console.log(`Pinecone에 강제 생성된 모임(ID: ${savedMeeting._id}) 추가 요청 성공.`);
+        } catch (aiError) {
+            console.error("AI 서버(Pinecone)에 모임 추가 중 오류:", aiError.message);
+        }
+
+        res.status(201).json({ meeting: savedMeeting });
+
+    } catch (error) {
+        console.error("모임 강제 생성 에러:", error);
+        res.status(400).json({ message: '모임 생성에 실패했습니다.', error: error.message });
+    }
+});
+
+// 모임 삭제 API
+router.delete('/:id', verifyToken, async (req, res) => {
+    try {
+        const meetingId = req.params.id;
+        const meeting = await Meeting.findById(meetingId);
+
+        if (!meeting) {
+            return res.status(404).json({ message: '모임을 찾을 수 없습니다.' });
+        }
+
+        if (meeting.host.toString() !== req.user.userId) {
+            return res.status(403).json({ message: '모임을 삭제할 권한이 없습니다.' });
+        }
+
+        try {
+            console.log('AI 서버에 Pinecone 데이터 삭제를 요청합니다...');
+            await axios.delete(`${AI_AGENT_URL}/meetings/delete/${meetingId}`);
+            console.log(`Pinecone에 모임(ID: ${meetingId}) 삭제 요청 성공.`);
+        } catch (aiError) {
+            console.error("AI 서버(Pinecone)에서 모임 정보를 삭제하는 중 오류 발생:", aiError.message);
+        }
+
+        await Meeting.findByIdAndDelete(meetingId);
+        
+        res.json({ message: '모임이 성공적으로 삭제되었습니다.' });
+
+    } catch (error) {
+        console.error("모임 삭제 에러:", error);
+        res.status(500).json({ message: '서버 오류가 발생했습니다.' });
+    }
+});
+
+// 모임 참여 신청 API
 router.post('/:id/join', verifyToken, async (req, res) => {
     try {
         const meeting = await Meeting.findById(req.params.id);
         if (!meeting) {
-            return res.status(404).json({ message: 'Meeting not found' });
+            return res.status(404).json({ message: '모임을 찾을 수 없습니다.' });
         }
-
-        if (meeting.members.includes(req.user.id)) {
-            return res.status(400).json({ message: 'Already joined' });
+        if (meeting.participants.length >= meeting.maxParticipants) {
+            return res.status(400).json({ message: '모집 인원이 가득 찼습니다.' });
         }
-        
-        // (선택) 최대 인원 수 확인 로직 추가 가능
-        if (meeting.maxParticipants && meeting.members.length >= meeting.maxParticipants) {
-             return res.status(400).json({ message: '모임 정원이 가득 찼습니다.' });
+        if (meeting.participants.includes(req.user.userId)) {
+            return res.status(400).json({ message: '이미 참여하고 있는 모임입니다.' });
         }
-
-        meeting.members.push(req.user.id);
+        meeting.participants.push(req.user.userId);
         await meeting.save();
         
-        // populate를 다시 해서 최신 멤버 목록과 함께 반환 (선택 사항)
-        const updatedMeeting = await Meeting.findById(req.params.id).populate('host', 'username').populate('members', 'username');
-        res.json(updatedMeeting);
+        const updatedMeeting = await Meeting.findById(req.params.id)
+            .populate('host', 'nickname')
+            .populate('participants', 'nickname');
 
+        res.json({ message: '모임 참여 신청이 완료되었습니다.', meeting: updatedMeeting });
     } catch (error) {
-        res.status(500).json({ message: 'Error joining meeting' });
+        console.error("모임 참여 에러:", error);
+        res.status(500).json({ message: '서버 오류가 발생했습니다.' });
     }
 });
 
+// 모임 참여 취소 API
+router.post('/:id/leave', verifyToken, async (req, res) => {
+    try {
+        const meeting = await Meeting.findById(req.params.id);
+        if (!meeting) {
+            return res.status(404).json({ message: '모임을 찾을 수 없습니다.' });
+        }
+        if (meeting.host.toString() === req.user.userId) {
+            return res.status(400).json({ message: '호스트는 모임을 떠날 수 없습니다. 모임을 삭제해주세요.' });
+        }
+        const participantIndex = meeting.participants.indexOf(req.user.userId);
+        if (participantIndex === -1) {
+            return res.status(400).json({ message: '참여하고 있는 모임이 아닙니다.' });
+        }
+        meeting.participants.splice(participantIndex, 1);
+        await meeting.save();
+        
+        const updatedMeeting = await Meeting.findById(req.params.id)
+            .populate('host', 'nickname')
+            .populate('participants', 'nickname');
+            
+        res.json({ message: '모임 참여가 취소되었습니다.', meeting: updatedMeeting });
+    } catch (error) {
+        console.error("모임 나가기 에러:", error);
+        res.status(500).json({ message: '서버 오류가 발생했습니다.' });
+    }
+});
 
 module.exports = router;

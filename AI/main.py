@@ -124,13 +124,13 @@ def call_general_search_agent(state: MasterAgentState):
             return tavily_tool.invoke({"query": query})
         except (Timeout, ConnectionError) as e:
             logging.error(f"Web search failed due to connection error or timeout: {e}")
-            raise  # 다시 시도하려면 예외를 다시 발생시킵니다.
+            raise   # 다시 시도하려면 예외를 다시 발생시킵니다.
         except Exception as e:
             logging.error(f"Web search failed with error: {e}")
-            return f"오류: 웹 검색에 실패했습니다. {e}"  # 오류 메시지 반환
+            return f"오류: 웹 검색에 실패했습니다. {e}"   # 오류 메시지 반환
         except Exception as e:
             logging.error(f"Web search failed with error: {e}")
-            raise  # Re-raise the exception to trigger retry
+            raise   # Re-raise the exception to trigger retry
 
 
     web_search_with_retry.description = "날씨, 뉴스, 맛집, 특정 주제에 대한 최신 정보 등 외부 세계에 대한 질문에 답할 때 사용합니다."
@@ -223,7 +223,7 @@ def call_meeting_matching_agent(state: MasterAgentState):
     retriever = vector_store.as_retriever(
         search_type="similarity_score_threshold",
         search_kwargs={'score_threshold': 0.75, 'k': 2}
-    )  
+    )   
 
     prepare_query_prompt = ChatPromptTemplate.from_template(
         """당신은 사용자가 입력한 정보를 바탕으로 유사한 다른 정보를 검색하기 위한 최적의 검색어를 만드는 전문가입니다.
@@ -577,7 +577,7 @@ def analyze_photo_tool(image_paths: list[str], survey_profile: dict) -> str:
                 logging.warning(f"이미지 파일을 여는 데 실패하여 건너뜁니다: {path}, 오류: {img_e}")
         
         # 4. Gemini 모델을 호출합니다.
-        model = genai.GenerativeModel('gemini-2.5-flash')
+        model = genai.GenerativeModel('gemini-1.5-flash') # 모델명 수정 (gemini-2.5-flash -> gemini-1.5-flash)
         # [수정] generate_prompt로 생성한 프롬프트와 이미지 파트를 함께 전달
         response = model.generate_content([prompt_text] + image_parts) 
         
@@ -635,7 +635,7 @@ def call_multimodal_hobby_agent(state: MasterAgentState):
     final_state = hobby_supervisor_agent.invoke(input_data, config={"recursion_limit": 10})
     
     final_answer = final_state.get("final_recommendation", "오류: 최종 추천을 생성하는 데 실패했습니다.")
-                
+            
     return {"final_answer": final_answer}
 
 
@@ -731,3 +731,10 @@ async def delete_meeting_from_pinecone(meeting_id: str):
     except Exception as e:
         logging.error(f"Pinecone 삭제 중 오류 발생: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Pinecone에서 모임을 삭제하는 중 오류가 발생했습니다.: {str(e)}")
+
+# --- 7. (추가) 서버 실행 ---
+if __name__ == "__main__":
+    import uvicorn
+    # app 변수는 코드 상단 4번에 이미 정의되어 있습니다.
+    # 이 서버가 메인 백엔드 역할을 하므로 8000번 포트를 사용합니다.
+    uvicorn.run(app, host="0.0.0.0", port=8000)

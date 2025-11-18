@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const bcrypt = require('bcrypt'); // 'bcryptjs'가 아닌 'bcrypt'를 사용합니다.
+const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const axios = require('axios');
 const User = require('../models/User');
@@ -9,56 +9,44 @@ const { verifyToken } = require('../utils/auth');
 
 /**
  * ---------------------------------
- * POST /api/auth/register - 회원가입 (관리자 키 검증 추가)
+ * POST /api/auth/signup - 회원가입
  * ---------------------------------
  */
-router.post('/register', async (req, res) => {
-    try {
-        const { username, email, password, role, adminKey } = req.body;
+router.post('/signup', async (req, res) => {
+  try {
+    const { username, password, name, nickname, email } = req.body;
 
-        if (!username || !email || !password) {
-            return res.status(400).json({ message: '모든 필수 정보를 입력해주세요.' });
-        }
-        
-        if (role === 'admin') {
-            if (!adminKey || adminKey !== process.env.ADMIN_REGISTRATION_KEY) {
-                return res.status(403).json({ message: '관리자 등록 키가 유효하지 않습니다.' });
-            }
-        }
-
-        const existingUser = await User.findOne({ $or: [{ username }, { email }] });
-        if (existingUser) {
-            if (existingUser.username === username) {
-                return res.status(409).json({ message: '이미 사용 중인 이름입니다.' });
-            }
-            if (existingUser.email === email) {
-                return res.status(409).json({ message: '이미 사용 중인 이메일입니다.' });
-            }
-        }
-
-        const hashedPassword = await bcrypt.hash(password, 10);
-        const user = new User({ 
-            username, 
-            email, 
-            password: hashedPassword, 
-            role,
-            name: username,
-            nickname: username 
-        });
-        
-        await user.save();
-        res.status(201).json({ message: '회원가입이 완료되었습니다.' });
-
-    } catch (error) {
-        console.error("Signup Error:", error);
-        res.status(500).json({ message: '서버 오류가 발생했습니다.' });
+    if (!username || !password || !name || !nickname || !email) {
+      return res.status(400).json({ message: '모든 필수 정보를 입력해주세요.' });
     }
-});
 
+    const existingUser = await User.findOne({ $or: [{ username }, { nickname }, { email }] });
+    if (existingUser) {
+        if (existingUser.username === username) {
+            return res.status(409).json({ message: '이미 사용 중인 아이디입니다.' });
+        }
+        if (existingUser.nickname === nickname) {
+            return res.status(409).json({ message: '이미 사용 중인 닉네임입니다.' });
+        }
+        if (existingUser.email === email) {
+            return res.status(409).json({ message: '이미 사용 중인 이메일입니다.' });
+        }
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const user = new User({ username, password: hashedPassword, name, nickname, email });
+    await user.save();
+
+    res.status(201).json({ message: '회원가입이 완료되었습니다.' });
+  } catch (error) {
+    console.error("Signup Error:", error);
+    res.status(500).json({ message: '서버 오류가 발생했습니다.' });
+  }
+});
 
 /**
  * ---------------------------------
- * POST /api/auth/login - 로그인 (JWT에 role 추가)
+ * POST /api/auth/login - 로그인
  * ---------------------------------
  */
 router.post('/login', async (req, res) => {
@@ -69,7 +57,8 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ message: '사용자 이름과 비밀번호를 모두 입력해주세요.' });
     }
 
-    const user = await User.findOne({ username }).select('+password');
+    // Select both possible password fields
+    const user = await User.findOne({ username }).select('+password +password_hash');
     if (!user) {
       return res.status(401).json({ message: '아이디 또는 비밀번호가 올바르지 않습니다.' });
     }
@@ -78,16 +67,25 @@ router.post('/login', async (req, res) => {
         return res.status(403).json({ message: '비활성화된 계정입니다. 관리자에게 문의하세요.' });
     }
 
-    const isValidPassword = await bcrypt.compare(password, user.password);
+    // Determine which password field to use
+    const hashToCompare = user.password || user.password_hash;
+    if (!hashToCompare) {
+        return res.status(500).json({ message: '계정에 비밀번호 정보가 없어 로그인할 수 없습니다.' });
+    }
+
+    const isValidPassword = await bcrypt.compare(password, hashToCompare);
     if (!isValidPassword) {
-      // (비밀번호 오류 처리 로직은 기존과 동일)
       user.failedLoginAttempts += 1;
       user.lastLoginAttempt = new Date();
+
       if (user.failedLoginAttempts >= 5) {
         user.isActive = false;
         await user.save();
-        return res.status(403).json({ message: '비밀번호를 5회 이상 틀려 계정이 비활성화되었습니다.' });
+        return res.status(403).json({
+          message: '비밀번호를 5회 이상 틀려 계정이 비활성화되었습니다.',
+        });
       }
+
       await user.save();
       return res.status(401).json({
         message: '아이디 또는 비밀번호가 올바르지 않습니다.',
@@ -95,7 +93,12 @@ router.post('/login', async (req, res) => {
       });
     }
     
-    // (로그인 성공 처리 로직은 기존과 동일)
+    // Self-healing: If the old field was used, migrate it to the new standard.
+    if (user.password_hash && !user.password) {
+        user.password = user.password_hash;
+        user.password_hash = undefined;
+    }
+
     user.failedLoginAttempts = 0;
     user.lastLoginAttempt = new Date();
     user.isLoggedIn = true;
@@ -110,9 +113,8 @@ router.post('/login', async (req, res) => {
     
     await user.save();
 
-    // <<<--- 중요: JWT 토큰에 role을 추가했습니다. ---
     const token = jwt.sign(
-      { userId: user._id, username: user.username, nickname: user.nickname, role: user.role },
+      { userId: user._id, username: user.username, nickname: user.nickname },
       process.env.JWT_SECRET,
       { expiresIn: '24h' }
     );
@@ -134,9 +136,11 @@ router.post('/login', async (req, res) => {
   }
 });
 
-
-// --- (이하 /verify-token, /logout 등 다른 코드는 기존과 동일하게 유지됩니다.) ---
-
+/**
+ * ----------------------------------------------------
+ * POST /api/auth/verify-token - 토큰 검증 (상태 유지)
+ * ----------------------------------------------------
+ */
 router.post("/verify-token", async (req, res) => {
     const token = req.cookies.token;
     if (!token) {
@@ -156,6 +160,11 @@ router.post("/verify-token", async (req, res) => {
     }
 });
 
+/**
+ * ---------------------------------
+ * POST /api/auth/logout - 로그아웃
+ * ---------------------------------
+ */
 router.post('/logout', async (req, res) => {
   try {
     const token = req.cookies.token;
@@ -176,6 +185,11 @@ router.post('/logout', async (req, res) => {
   }
 });
 
+/**
+ * ---------------------------------
+ * GET /api/auth/mypage - 마이페이지 데이터 조회
+ * ---------------------------------
+ */
 router.get('/mypage', verifyToken, async (req, res) => {
   try {
     const userId = req.user.userId;
@@ -204,6 +218,11 @@ router.get('/mypage', verifyToken, async (req, res) => {
   }
 });
 
+/**
+ * ---------------------------------
+ * PUT /api/auth/profile - 프로필 정보 수정
+ * ---------------------------------
+ */
 router.put('/profile', verifyToken, async (req, res) => {
     try {
         const { nickname, email, currentPassword, newPassword } = req.body;
@@ -214,6 +233,7 @@ router.put('/profile', verifyToken, async (req, res) => {
             return res.status(404).json({ message: '사용자를 찾을 수 없습니다.' });
         }
 
+        // 닉네임, 이메일 중복 확인
         if (nickname && nickname !== user.nickname) {
             const existingNickname = await User.findOne({ nickname: nickname, _id: { $ne: userId } });
             if (existingNickname) {
@@ -230,6 +250,7 @@ router.put('/profile', verifyToken, async (req, res) => {
             user.email = email;
         }
 
+        // 비밀번호 변경 로직
         if (newPassword) {
             if (!currentPassword) {
                 return res.status(400).json({ message: '현재 비밀번호를 입력해주세요.' });
@@ -253,6 +274,12 @@ router.put('/profile', verifyToken, async (req, res) => {
     }
 });
 
+
+/**
+ * ---------------------------------------
+ * DELETE /api/auth/delete/:userId - 계정 삭제
+ * ---------------------------------------
+ */
 router.delete('/delete/:userId', async (req, res) => {
     try {
       const user = await User.findByIdAndDelete(req.params.userId);
@@ -262,6 +289,25 @@ router.delete('/delete/:userId', async (req, res) => {
       res.json({ message: '사용자가 성공적으로 삭제되었습니다.' });
     } catch (error) {
       console.error("Delete User Error:", error);
+      res.status(500).json({ message: '서버 오류가 발생했습니다.' });
+    }
+});
+
+/**
+ * -----------------------------------------------------------
+ * DELETE /api/auth/delete-by-username/:username - 계정 삭제 (임시)
+ * -----------------------------------------------------------
+ */
+router.delete('/delete-by-username/:username', async (req, res) => {
+    try {
+      const { username } = req.params;
+      const user = await User.findOneAndDelete({ username: username });
+      if (!user) {
+        return res.status(404).json({ message: '해당 사용자 이름을 가진 사용자를 찾을 수 없습니다.' });
+      }
+      res.json({ message: `사용자 '${username}'이(가) 성공적으로 삭제되었습니다.` });
+    } catch (error) {
+      console.error("Delete User by Username Error:", error);
       res.status(500).json({ message: '서버 오류가 발생했습니다.' });
     }
 });
