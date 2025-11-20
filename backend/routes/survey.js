@@ -61,55 +61,79 @@ router.post('/recommend', verifyToken, async (req, res) => {
     try {
         const { answers } = req.body;
         
-        // [수정] 환경 변수 사용 (없으면 기본값 8000번 포트)
         const aiBaseUrl = process.env.AI_SERVER_URL || 'http://localhost:8000';
         const aiAgentUrl = `${aiBaseUrl}/agent/invoke`;
         
         console.log(`AI 에이전트 서버(${aiAgentUrl})로 추천 요청을 보냅니다...`);
 
-        // 👇 --- answers 객체에서 올바른 키(Q6, Q7 등)로 값을 읽어오도록 변환 --- 👇
-        const budgetMap = {
-            '5만원 미만': 50000,
-            '5~10만원': 100000,
-            '10~20만원': 200000,
-            '20만원 이상': 1000000
+        // 답변 변환 로직
+        const getNum = (key) => Number(answers[key]) || 3;
+        const getChoiceIdx = (key, options) => {
+            const val = answers[key];
+            if (!val) return 3;
+            const idx = options.indexOf(val);
+            return idx !== -1 ? idx + 1 : 3;
         };
 
-        const timeMap = {
-            '3시간 미만': 3,
-            '3~5시간': 5,
-            '5~10시간': 10,
-            '10시간 이상': 24
+        const q1_opts = ['1시간 미만', '1시간 ~ 3시간', '3시간 ~ 5시간', '5시간 이상'];
+        const q2_opts = ['거의 없음 또는 3만원 미만', '3만원 ~ 5만원', '5만원 ~ 10만원', '10만원 이상'];
+        const q5_opts = ['오랜 시간 앉아 있거나 서 있는 것이 힘들다.', '계단을 오르거나 조금만 걸어도 숨이 차다.', '만성적인 통증이나 피로감이 있다.', '딱히 신체적인 어려움은 없다.'];
+        const q6_opts = ['익숙하고 안전한 집 안에서 할 수 있는 활동', '집 근처에서 가볍게 할 수 있는 야외 활동', '새로운 장소를 찾아가는 활동'];
+        const q12_opts = ['활동에 집중할 수 있는 독립된 공간이 있다.', '공용 공간을 사용해야 해서 제약이 있다.', '층간 소음 등 주변 환경이 신경 쓰인다.', '공간이 협소하여 활동에 제약이 있다.'];
+        const q21_opts = ['거의 방에서만 시간을 보냈다.', '집 안에서는 활동하지만 외출은 거의 하지 않았다.', '편의점 방문 등 필수적인 용무로만 잠시 외출했다.', '산책 등 혼자 하는 활동을 위해 외출한 적이 있다.', '다른 사람과 만나는 활동을 위해 외출한 적이 있다.'];
+        const q31_opts = ['성취: 새로운 기술을 배우고 실력이 느는 것을 확인하는 것', '회복: 복잡한 생각에서 벗어나 편안하게 재충전하는 것', '연결: 좋은 사람들과 교류하며 소속감을 느끼는 것', '활력: 몸을 움직여 건강해지고 에너지를 얻는 것'];
+        const q39_opts = ['단독형: 누구에게도 방해받지 않는 나만의 공간에서 혼자 하는 활동', '병렬형: 다른 사람들이 주변에 있지만, 각자 자기 활동에 집중하는 조용한 공간 (예: 도서관, 카페)', '저강도 상호작용형: 선생님이나 안내자가 활동을 이끌어주는 소규모 그룹 (예: 강좌, 워크숍)', '고강도 상호작용형: 공통의 목표를 위해 협력하거나 자유롭게 소통하는 모임 (예: 동호회, 팀 스포츠)'];
+        const q40_opts = ['마음이 잘 맞는 단 한 명의 파트너와 함께하는 것', '3~4명 정도의 소규모 그룹', '다양한 사람들을 만날 수 있는 대규모 그룹'];
+
+        const surveyPayload = {
+            "1": getChoiceIdx("Q1", q1_opts),
+            "2": getChoiceIdx("Q2", q2_opts),
+            "3": getNum("Q3"), "4": getNum("Q4"),
+            "5": getChoiceIdx("Q5", q5_opts), "6": getChoiceIdx("Q6", q6_opts),
+            "12": getChoiceIdx("Q12", q12_opts),
+            "13": getNum("Q13"), "14": getNum("Q14"), "15": getNum("Q15"), "16": getNum("Q16"),
+            "18": getNum("Q18"), "20": getNum("Q20"), 
+            "21": getChoiceIdx("Q21", q21_opts),
+            "27": getNum("Q27"), "29": getNum("Q29"),
+            "31": getChoiceIdx("Q31", q31_opts),
+            "33": getNum("Q33"), "34": getNum("Q34"), "35": getNum("Q35"), 
+            "36": getNum("Q36"), "37": getNum("Q37"), "38": getNum("Q38"),
+            "41": getNum("Q41"), "42": getNum("Q42"),
+            "39": getChoiceIdx("Q39", q39_opts),
+            "40": getChoiceIdx("Q40", q40_opts),
+            "43": getNum("Q43"), "44": getNum("Q44"), "45": getNum("Q45"), 
+            "46": getNum("Q46"), "47": getNum("Q47")
         };
 
         const payload = {
             user_input: {
-                survey: {
-                    "Q6": Number(answers.Q6) || 3,
-                    "Q7": Number(answers.Q7) || 3,
-                    "Q8": Number(answers.Q8) || 3,
-                    "Q9": Number(answers.Q9) || 3,
-                    "Q10": Number(answers.Q10) || 3,
-                    "Q11": Number(answers.Q11) || 3,
-                    "Q12": Number(answers.Q12) || 3,
-                    "Q13": Number(answers.Q13) || 3,
-                    "Q14": Number(answers.Q14) || 3,
-                    "Q15": Number(answers.Q15) || 3
-                },
-                user_context: {
-                    "monthly_budget": budgetMap[answers.monthly_budget] || 100000,
-                    "session_time_limit_hours": timeMap[answers.weekly_time] || 5,
-                    "offline_ok": true,
-                    "user_id": req.user.userId
-                }
+                survey: surveyPayload
             }
         };
         
         const agentResponse = await axios.post(aiAgentUrl, payload);
-
         console.log('AI 에이전트로부터 응답을 받았습니다.');
 
-        const finalAnswer = JSON.parse(agentResponse.data.final_answer);
+        let finalAnswer = agentResponse.data.final_answer;
+
+        // [수정] AI가 에러 메시지를 보냈는지 먼저 확인
+        if (typeof finalAnswer === 'string' && finalAnswer.startsWith("오류:")) {
+            console.error("AI 서버 처리 실패:", finalAnswer);
+            return res.status(500).json({ message: finalAnswer }); // 프론트엔드에 에러 내용 전달
+        }
+
+        // JSON 파싱 시도
+        if (typeof finalAnswer === 'string') {
+            try {
+                finalAnswer = finalAnswer.replace(/```json\n|\n```/g, '').trim();
+                finalAnswer = JSON.parse(finalAnswer);
+            } catch (e) {
+                console.error("AI 응답 파싱 실패:", e);
+                // 파싱 실패 시 에러 반환
+                return res.status(500).json({ message: "AI 응답 형식이 올바르지 않습니다.", raw: finalAnswer });
+            }
+        }
+        
         res.json(finalAnswer);
 
     } catch (error) {
@@ -117,11 +141,9 @@ router.post('/recommend', verifyToken, async (req, res) => {
         if (axios.isAxiosError(error)) {
             if (error.response) {
                 console.error("AI 에이전트 응답 상태:", error.response.status);
-                console.error("AI 에이전트 응답 데이터:", error.response.data);
-                return res.status(500).json({ message: `AI 에이전트가 오류를 반환했습니다: ${error.response.status}` });
+                return res.status(500).json({ message: `AI 에이전트 오류: ${error.response.status}` });
             } 
             else if (error.request) {
-                console.error("AI 에이전트로부터 응답이 없습니다. Python 서버(main_V3.py)가 8000번 포트에서 실행 중인지 확인해주세요.");
                 return res.status(500).json({ message: "AI 추천 에이전트에 연결할 수 없습니다." });
             }
         }

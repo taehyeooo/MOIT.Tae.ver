@@ -4,12 +4,11 @@ import { useAuth } from '../../context/AuthContext';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
 import Swal from 'sweetalert2';
-import { FaUsers, FaFire, FaUserPlus } from 'react-icons/fa';
+import { FaUsers, FaFire, FaUserPlus, FaStar, FaTimes } from 'react-icons/fa';
 
-// --- 데이터 영역: php/hobby_recommendation.php의 49개 문항을 변환 ---
-
+// --- 설문 문항 데이터 (변경 없음) ---
 const surveyQuestions = [
-    // 1단계: 나의 현실적인 일상 점검하기 (12문항)
+    // 1단계
     { id: 'Q1', type: 'choice', text: '1. 일주일에 새로운 활동을 위해 온전히 사용할 수 있는 시간은 어느 정도인가요?', options: ['1시간 미만', '1시간 ~ 3시간', '3시간 ~ 5시간', '5시간 이상'] },
     { id: 'Q2', type: 'choice', text: '2. 한 달에 새로운 활동을 위해 부담 없이 지출할 수 있는 예산은 얼마인가요?', options: ['거의 없음 또는 3만원 미만', '3만원 ~ 5만원', '5만원 ~ 10만원', '10만원 이상'] },
     { id: 'Q3', type: 'scale', text: '3. 평소 하루를 보낼 때, 당신의 신체적 에너지 수준은 어느 정도라고 느끼시나요?', scaleLabels: ['거의 방전', '매우 활기참'] },
@@ -23,7 +22,7 @@ const surveyQuestions = [
     { id: 'Q11', type: 'scale', text: '11. "새로운 것을 시작하는 것 자체가 큰 스트레스와 부담으로 느껴진다."', scaleLabels: ['전혀 그렇지 않다', '매우 그렇다'] },
     { id: 'Q12', type: 'choice', text: '12. 당신의 주거 환경은 새로운 활동을 하기에 어떻다고 생각하시나요?', options: ['활동에 집중할 수 있는 독립된 공간이 있다.', '공용 공간을 사용해야 해서 제약이 있다.', '층간 소음 등 주변 환경이 신경 쓰인다.', '공간이 협소하여 활동에 제약이 있다.'] },
     
-    // 2단계: 나의 마음 상태 들여다보기 (18문항)
+    // 2단계
     { id: 'Q13', type: 'scale', text: '13. "나는 어떤 일에 실패하거나 실수를 했을 때, 나 자신을 심하게 비난하고 자책하는 편이다."', scaleLabels: ['전혀 그렇지 않다', '매우 그렇다'] },
     { id: 'Q14', type: 'scale', text: '14. "나는 나의 단점이나 부족한 부분도 너그럽게 받아들이려고 노력한다."', scaleLabels: ['매우 그렇다', '전혀 그렇지 않다'] },
     { id: 'Q15', type: 'scale', text: '15. "나는 다른 사람의 평가나 시선에 매우 민감하다."', scaleLabels: ['전혀 그렇지 않다', '매우 그렇다'] },
@@ -43,7 +42,7 @@ const surveyQuestions = [
     { id: 'Q29', type: 'scale', text: '29. "나는 힘든 일이 있을 때, 그 문제 자체에 대해 생각하기보다 다른 무언가에 몰두하며 잊으려고 하는 편이다."', scaleLabels: ['매우 그렇다', '전혀 그렇지 않다'] },
     { id: 'Q30', type: 'scale', text: '30. "나는 다른 사람들이 나를 있는 그대로 이해해주지 못한다고 느낄 때가 많다."', scaleLabels: ['매우 그렇다', '전혀 그렇지 않다'] },
 
-    // 3단계: 내가 바라는 활동의 모습 그려보기 (18문항)
+    // 3단계
     { id: 'Q31', type: 'choice', text: '31. 새로운 활동을 통해 당신이 가장 얻고 싶은 것은 무엇인가요? (가장 중요한 것 1개 선택)', options: ['성취: 새로운 기술을 배우고 실력이 느는 것을 확인하는 것', '회복: 복잡한 생각에서 벗어나 편안하게 재충전하는 것', '연결: 좋은 사람들과 교류하며 소속감을 느끼는 것', '활력: 몸을 움직여 건강해지고 에너지를 얻는 것'] },
     { id: 'Q32', type: 'choice', text: '32. 다음 문장들 중, 현재 당신의 마음에 가장 와닿는 것은 무엇인가요?', options: ['"무언가에 깊이 몰입해서 시간 가는 줄 모르는 경험을 하고 싶다."', '"결과물에 상관없이 과정 자체를 즐기고 싶다."', '"나도 누군가에게 도움이 되는 가치 있는 일을 하고 싶다."', '"그저 즐겁게 웃을 수 있는 시간이 필요하다."'] },
     { id: 'Q33', type: 'scale', text: '33. 새로운 지식이나 기술을 배우는 것', scaleLabels: ['전혀 중요하지 않음', '매우 중요함'] },
@@ -63,7 +62,7 @@ const surveyQuestions = [
     { id: 'Q47', type: 'scale', text: '47. 몸을 움직이는 신체 활동(예: 운동, 춤)에 얼마나 관심이 있으신가요?', scaleLabels: ['전혀 관심 없음', '매우 관심 많음'] },
     { id: 'Q48', type: 'scale', text: '48. "만약 새로운 그룹 활동에 참여한다면, 기존 멤버들이 끈끈하게 뭉쳐 있는 곳보다는, 나와 같이 새로 시작하는 사람들이 많은 곳이 더 편할 것 같다."', scaleLabels: ['매우 그렇다', '전혀 그렇지 않다'] },
   
-    // 4단계: 사진 업로드
+    // 4단계
     { 
         id: 'Q49_photo', 
         type: 'photo', 
@@ -87,7 +86,7 @@ const stageHeaders = [
 // --- 컴포넌트 영역 ---
 
 const StatsSidebar = () => {
-    // (기존 StatsSidebar 코드와 동일 - 변경 없음)
+    /* (StatsSidebar 컴포넌트 생략) */
     const [stats, setStats] = useState(null);
     const [loading, setLoading] = useState(true);
 
@@ -136,7 +135,7 @@ const StatsSidebar = () => {
 };
 
 const LoginPrompt = () => (
-    // (기존 LoginPrompt 코드와 동일 - 변경 없음)
+    /* (LoginPrompt 컴포넌트 생략) */
     <div className="text-center bg-white p-12 rounded-lg shadow-lg max-w-lg mx-auto">
         <h2 className="text-2xl font-bold mb-4 text-gray-800">로그인이 필요한 서비스입니다.</h2>
         <p className="text-gray-600 mb-8">
@@ -152,14 +151,13 @@ const LoginPrompt = () => (
 );
 
 const Survey = ({ onComplete }) => {
+    /* (Survey 컴포넌트 생략 - 너무 길어서) */
     const [currentStep, setCurrentStep] = useState(0);
     const [answers, setAnswers] = useState({});
-    const [previews, setPreviews] = useState([]); // 사진 미리보기용 state
+    const [previews, setPreviews] = useState([]);
 
     const currentQuestion = surveyQuestions[currentStep];
     const totalSteps = surveyQuestions.length;
-
-    // 현재 단계에 맞는 헤더 찾기
     const currentHeader = stageHeaders.slice().reverse().find(h => (currentStep + 1) >= h.step);
 
     const handleNext = () => {
@@ -170,13 +168,13 @@ const Survey = ({ onComplete }) => {
         }
     };
     
+    // [수정] 이전 버튼이 다음으로 가던 버그 수정
     const handlePrev = () => {
         if (currentStep > 0) {
-            setCurrentStep(currentStep + 1);
+            setCurrentStep(currentStep - 1); // <-- 수정: -1
         }
     }
 
-    // [수정] 단일 선택 (choice, scale) 핸들러
     const handleSelect = (value) => {
         const newAnswers = { ...answers, [currentQuestion.id]: value };
         setAnswers(newAnswers);
@@ -191,7 +189,6 @@ const Survey = ({ onComplete }) => {
         }
     };
 
-    // [신규] 체크박스 핸들러
     const handleCheckboxChange = (option) => {
         const currentAnswers = answers[currentQuestion.id] || [];
         let newAnswersArray;
@@ -205,12 +202,10 @@ const Survey = ({ onComplete }) => {
         setAnswers({ ...answers, [currentQuestion.id]: newAnswersArray });
     };
 
-    // [신규] 파일 핸들러
     const handleFileChange = (e) => {
         const files = e.target.files;
         setAnswers({ ...answers, [currentQuestion.id]: files });
 
-        // 미리보기 생성
         const filePreviews = Array.from(files).map(file => {
             const reader = new FileReader();
             return new Promise(resolve => {
@@ -224,14 +219,13 @@ const Survey = ({ onComplete }) => {
         });
     };
 
-    // [수정] 답변 유무 확인 로직
     const isAnswered = () => {
         const answer = answers[currentQuestion.id];
         if (currentQuestion.type === 'checkbox') {
-            return answer && answer.length > 0; // Q10은 하나 이상 선택해야 함
+            return answer && answer.length > 0;
         }
         if (currentQuestion.type === 'photo') {
-            return true; // 사진은 선택 사항 (없어도 다음/완료 가능)
+            return true;
         }
         return answer !== undefined;
     };
@@ -255,7 +249,6 @@ const Survey = ({ onComplete }) => {
                     </div>
                 </div>
 
-                {/* [신규] 단계별 헤더 */}
                 {currentHeader && (
                     <div className="mb-8 p-4 bg-gray-50 rounded-lg">
                         <h2 className="text-xl font-bold text-gray-800">{currentHeader.title}</h2>
@@ -270,11 +263,10 @@ const Survey = ({ onComplete }) => {
                         animate={{ opacity: 1, x: 0 }}
                         exit={{ opacity: 0, x: -50 }}
                         transition={{ duration: 0.3 }}
-                        className="min-h-[300px]" // 최소 높이 보장
+                        className="min-h-[300px]"
                     >
                         <h3 className="text-xl font-semibold mb-6">{currentQuestion.text}</h3>
                         
-                        {/* 1. choice 렌더링 */}
                         {currentQuestion.type === 'choice' && (
                             <div className="space-y-3">
                                 {currentQuestion.options.map(opt => (
@@ -289,7 +281,6 @@ const Survey = ({ onComplete }) => {
                             </div>
                         )}
 
-                        {/* 2. scale 렌더링 (커스텀 레이블 적용) */}
                         {currentQuestion.type === 'scale' && (
                              <div className="flex justify-between items-center px-2">
                                 <span className="text-sm text-gray-500 text-center w-1/5">{currentQuestion.scaleLabels[0]}</span>
@@ -303,7 +294,6 @@ const Survey = ({ onComplete }) => {
                             </div>
                         )}
 
-                        {/* 3. [신규] checkbox 렌더링 */}
                         {currentQuestion.type === 'checkbox' && (
                             <div className="space-y-3">
                                 {currentQuestion.options.map(opt => (
@@ -318,7 +308,6 @@ const Survey = ({ onComplete }) => {
                             </div>
                         )}
 
-                        {/* 4. [신규] photo 렌더링 */}
                         {currentQuestion.type === 'photo' && (
                             <div>
                                 <div className="p-4 bg-gray-100 rounded-lg text-gray-700 space-y-2">
@@ -374,55 +363,133 @@ const Survey = ({ onComplete }) => {
     );
 };
 
-const Results = ({ recommendations, onReset }) => (
-    // (기존 Results 코드와 동일 - 변경 없음)
-    <div className="max-w-2xl mx-auto">
-        <div className="bg-white p-8 rounded-lg shadow-lg text-center">
-             <h2 className="text-3xl font-bold mb-2 text-blue-600">🎉 맞춤 취미 추천</h2>
-             <p className="text-gray-600 mb-8">AI가 회원님의 성향을 분석하여 3개의 취미를 추천해드려요!</p>
-        </div>
+const Results = ({ recommendations, onReset }) => {
+    const [selectedHobby, setSelectedHobby] = useState(null);
 
-        <div className="space-y-6 mt-8">
-            {recommendations.length > 0 ? recommendations.map((hobby, index) => (
-                <motion.div
-                    key={`${hobby.hobby_id}-${index}`}
-                    className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow"
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.1 }}
+    return (
+        <div className="max-w-5xl mx-auto">
+            <div className="bg-white p-8 rounded-lg shadow-lg text-center mb-10">
+                 <h2 className="text-3xl font-bold mb-2 text-blue-600">🎉 맞춤 취미 추천</h2>
+                 <p className="text-gray-600">AI가 회원님의 성향을 분석하여 가장 잘 어울리는 3가지 취미를 찾았습니다!</p>
+                 <p className="text-sm text-gray-400 mt-2">카드를 클릭하면 상세 내용을 볼 수 있습니다.</p>
+            </div>
+    
+            {/* 카드 그리드 */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {Array.isArray(recommendations) && recommendations.length > 0 ? (
+                    recommendations.map((hobby, index) => (
+                        <motion.div
+                            key={hobby.hobby_id || index}
+                            className="bg-white rounded-xl shadow-md overflow-hidden transition-all transform hover:-translate-y-1 flex flex-col h-full cursor-pointer group border border-gray-100"
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: index * 0.2 }}
+                            onClick={() => setSelectedHobby(hobby)}
+                        >
+                            <div className="p-6 flex flex-col flex-grow">
+                                <div className="flex justify-between items-center mb-3">
+                                    <h3 className="text-xl font-bold text-gray-900 line-clamp-1">{hobby.name_ko || '추천 취미'}</h3>
+                                    {hobby.score_total && (
+                                        <div className="flex items-center gap-1 text-orange-500 font-bold text-sm bg-orange-50 px-2 py-1 rounded-lg">
+                                            <FaStar /> {Math.round(hobby.score_total)}%
+                                        </div>
+                                    )}
+                                </div>
+                                
+                                <p className="text-gray-600 text-sm mb-4 flex-grow leading-relaxed line-clamp-3">
+                                    {hobby.short_desc || hobby.description || '설명이 없습니다.'}
+                                </p>
+                                
+                                <div className="flex flex-wrap gap-2 mt-auto">
+                                    {hobby.reason && typeof hobby.reason === 'string' && 
+                                        hobby.reason.split(' · ').slice(0, 2).map((tag, i) => (
+                                            <span key={i} className="bg-blue-50 text-blue-600 text-xs font-semibold px-3 py-1 rounded-full border border-blue-100">
+                                                {tag.trim()}
+                                            </span>
+                                    ))}
+                                    {(!hobby.reason) && <span className="bg-gray-100 text-gray-500 text-xs px-3 py-1 rounded-full">상세보기 클릭</span>}
+                                </div>
+                            </div>
+                        </motion.div>
+                    ))
+                ) : (
+                    <div className="col-span-3 text-center p-12 bg-white rounded-lg shadow-sm">
+                        <p className="text-gray-500">추천할 만한 취미를 찾지 못했어요. 다시 시도해 주세요.</p>
+                    </div>
+                )}
+            </div>
+    
+            <div className="text-center mt-12">
+                <button 
+                    onClick={onReset} 
+                    className="px-8 py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition-colors shadow-md hover:shadow-lg"
                 >
-                    <h3 className="text-2xl font-bold text-gray-800 mb-2">{hobby.name_ko}</h3>
-                    <p className="text-gray-600 mb-4">{hobby.short_desc}</p>
-                    
-                    <div className="flex flex-wrap gap-2 mb-4">
-                        {(hobby.reason || '').split(' · ').map((tag, i) => (
-                            tag && <span key={i} className="bg-blue-100 text-blue-800 text-xs font-semibold px-3 py-1 rounded-full">{tag.trim()}</span>
-                        ))}
-                    </div>
-                    
-                    <div className="text-right font-bold text-blue-600 text-lg">
-                        추천도: {Math.round(hobby.score_total)}%
-                    </div>
-                </motion.div>
-            )) : <div className="text-center p-8 bg-white rounded-lg shadow-md">추천할 만한 취미를 찾지 못했어요.</div>}
-        </div>
+                    다시 설문하기
+                </button>
+            </div>
 
-        <div className="text-center mt-10">
-            <button 
-                onClick={onReset} 
-                className="px-8 py-3 border-2 border-blue-500 text-blue-500 font-bold rounded-lg hover:bg-blue-50 transition-colors"
-            >
-                다시 설문하기
-            </button>
+            {/* 상세 보기 모달 */}
+            <AnimatePresence>
+                {selectedHobby && (
+                    <motion.div 
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm"
+                        onClick={() => setSelectedHobby(null)}
+                    >
+                        <motion.div 
+                            initial={{ scale: 0.9, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.9, opacity: 0 }}
+                            className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto relative shadow-2xl"
+                            onClick={e => e.stopPropagation()}
+                        >
+                            <button 
+                                onClick={() => setSelectedHobby(null)}
+                                className="absolute top-4 right-4 p-2 bg-white/80 rounded-full hover:bg-gray-100 transition-colors z-10"
+                            >
+                                <FaTimes size={20} className="text-gray-600" />
+                            </button>
+
+                            <div className="p-8"> 
+                                <h2 className="text-3xl font-bold text-gray-900 mb-6 border-b pb-3">
+                                    {selectedHobby.name_ko}
+                                </h2>
+                                
+                                <div className="mb-8">
+                                    <h3 className="text-lg font-bold text-gray-900 mb-3 border-b pb-2">📖 어떤 취미인가요?</h3>
+                                    <p className="text-gray-700 leading-relaxed text-lg">
+                                        {selectedHobby.short_desc || selectedHobby.description || "상세 설명이 없습니다."}
+                                    </p>
+                                </div>
+
+                                <div>
+                                    <h3 className="text-lg font-bold text-gray-900 mb-3 border-b pb-2">💡 왜 추천하나요?</h3>
+                                    <div className="bg-blue-50 p-5 rounded-xl text-blue-900 leading-relaxed">
+                                        {selectedHobby.reason 
+                                            ? (typeof selectedHobby.reason === 'string' 
+                                                ? selectedHobby.reason.split(' · ').map((r, i) => <p key={i} className="mb-2 last:mb-0">• {r}</p>) 
+                                                : selectedHobby.reason)
+                                            : "AI 분석 결과를 바탕으로 회원님의 성향과 잘 맞는 활동입니다."
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
-    </div>
-);
+    );
+};
 
 
 // --- 메인 페이지 컴포넌트 ---
 const HobbyRecommend = () => {
     const { user } = useAuth();
-    const [step, setStep] = useState('loading');
+    // [수정] 초기 상태를 'checking' 대신 'initial_load'로 설정하여 API 호출 순서를 제어
+    const [step, setStep] = useState('initial_load'); 
     const [recommendations, setRecommendations] = useState([]);
 
     useEffect(() => {
@@ -431,60 +498,52 @@ const HobbyRecommend = () => {
                 setStep('loginPrompt');
                 return;
             }
-            try {
-                // [수정] 이미 저장된 '상세 설문' 결과를 가져오는 API (엔드포인트는 예시)
-                const response = await axios.get('/api/survey/detailed-result', { withCredentials: true });
-                if (response.data && response.data.recommendations) {
-                    setRecommendations(response.data.recommendations);
-                    setStep('results');
-                }
-            } catch (error) {
-                if (error.response && error.response.status === 404) {
-                    setStep('survey');
-                } else {
-                    console.error("저장된 설문결과 로딩 실패:", error);
-                    setStep('survey');
+            
+            // 'initial_load' 또는 'checking' 상태에서만 API 호출 시도
+            if (step === 'initial_load' || step === 'checking') { 
+                setStep('loading'); 
+                try {
+                    const response = await axios.get('/api/survey', { withCredentials: true });
+                    
+                    if (response.data && Array.isArray(response.data.recommendations) && response.data.recommendations.length > 0) {
+                        setRecommendations(response.data.recommendations);
+                        setStep('results'); 
+                    } else {
+                        setStep('survey'); 
+                    }
+                } catch (error) {
+                    // 404 (결과 없음) 또는 기타 오류 발생 시 설문 시작
+                    console.error("저장된 설문결과 로딩 실패. 설문 시작:", error);
+                    setStep('survey'); 
                 }
             }
         };
-        fetchResult();
-    }, [user]);
-    
-    // [수정] AI 추천 요청 함수 (FormData 사용)
+        
+        // user 정보가 있거나, step이 초기 로드 상태일 때만 실행
+        if (user || step === 'initial_load') {
+            fetchResult();
+        }
+    }, [user]); // user가 로드되면 초기 로직 실행
+
     const getAiRecommendations = async (answers) => {
+        // ... (API 호출 로직 생략)
         try {
-            console.log("Node.js 백엔드를 통해 AI 에이전트에 추천 요청을 보냅니다 (FormData)...");
+            console.log("AI에게 취미 추천 요청 보내는 중...");
 
-            const formData = new FormData();
-            const photoFiles = answers.Q49_photo;
-
-            // 1. 사진 파일을 FormData에 추가
-            if (photoFiles && photoFiles.length > 0) {
-                Array.from(photoFiles).forEach((file) => {
-                    // 'hobby_photos'는 PHP의 'hobby_photos[]'와 대응
-                    formData.append('hobby_photos', file);
-                });
-            }
-
-            // 2. 나머지 설문 답변(JSON)을 FormData에 추가
-            const answersJson = { ...answers };
-            delete answersJson.Q49_photo; // 파일 객체는 제외
-            formData.append('answers', JSON.stringify(answersJson));
+            const textAnswers = { ...answers };
+            delete textAnswers.Q49_photo; 
 
             const response = await axios.post(
-                '/api/survey/recommend-detailed', // (주의: 새 엔드포인트 예시)
-                formData, 
-                { 
-                    withCredentials: true,
-                    headers: {
-                        // Content-Type은 axios가 FormData와 함께 자동 설정
-                    }
-                }
+                '/api/survey/recommend', 
+                { answers: textAnswers }, 
+                { withCredentials: true }
             );
-            return response.data || [];
+
+            return response.data.recommendations || [];
+
         } catch (error) {
-            console.error("AI 추천을 받아오는 중 오류 발생:", error);
-            Swal.fire('AI 추천 실패', '추천을 받아오는 중 문제가 발생했습니다. 잠시 후 다시 시도해주세요.', 'error');
+            console.error("AI 추천 요청 중 오류:", error);
+            Swal.fire('오류 발생', 'AI 서버와 통신 중 문제가 발생했습니다.', 'error');
             return [];
         }
     };
@@ -494,28 +553,21 @@ const HobbyRecommend = () => {
         
         const results = await getAiRecommendations(answers);
 
-        const uniqueResults = results.reduce((acc, current) => {
-            if (!acc.find(item => item.name_ko === current.name_ko)) {
-                acc.push(current);
-            }
-            return acc;
-        }, []).slice(0, 3);
-
-        if (uniqueResults.length === 0) {
+        if (!results || results.length === 0) {
+            Swal.fire('알림', '적절한 추천 결과를 찾지 못했습니다.', 'info');
             setStep('survey');
             return;
         }
         
-        setRecommendations(uniqueResults);
+        setRecommendations(results);
 
-        // [수정] 상세 설문 결과를 저장하는 API (엔드포인트는 예시)
-        if (user) {
-            try {
-                // (주의: 결과 저장은 FormData가 아닌 JSON으로 다시 보낼 수 있음)
-                await axios.post('/api/survey/detailed-result', { answers, recommendations: uniqueResults }, { withCredentials: true });
-            } catch (error) {
-                console.error("결과 저장 중 오류 발생:", error);
-            }
+        try {
+            await axios.post('/api/survey', { 
+                answers, 
+                recommendations: results 
+            }, { withCredentials: true });
+        } catch (saveError) {
+            console.error("결과 저장 실패 (화면에는 표시됨):", saveError);
         }
 
         setStep('results');
@@ -523,29 +575,40 @@ const HobbyRecommend = () => {
     };
 
     const handleReset = () => {
-        setStep('survey');
+        // [핵심 해결] setStep('survey')를 호출하여 step을 명확하게 'survey'로 변경하고,
+        // 이 step 변경이 useEffect에 의해 다시 API를 호출하는 것을 막기 위해
+        // step에 'initial_load'나 'checking'을 넣지 않습니다.
+        setStep('survey'); 
         setRecommendations([]);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
     const renderContent = () => {
-        // (기존 renderContent 코드와 동일 - 변경 없음)
         switch (step) {
             case 'loginPrompt':
                 return <LoginPrompt />;
             case 'survey':
-                return <Survey onComplete={handleSurveyComplete} />;
+                // key를 'survey'로 지정하면, step이 'results' -> 'survey'로 바뀔 때
+                // 컴포넌트가 다시 마운트되면서 Survey 내부 상태(answers, currentStep)가 초기화됩니다.
+                return <Survey key="survey" onComplete={handleSurveyComplete} />; 
             case 'results':
                 return <Results recommendations={recommendations} onReset={handleReset} />;
             case 'loading':
-                 return <div className="text-center p-12 text-gray-500">AI가 회원님을 위한 취미를 분석 중입니다... 잠시만 기다려주세요.</div>;
+            case 'initial_load':
+            case 'checking': 
             default:
-                return <div className="text-center p-12 text-gray-500">사용자 정보를 확인하는 중...</div>;
+                 return (
+                    <div className="text-center p-20">
+                        <div className="text-6xl mb-4 animate-bounce">🤖</div>
+                        <h3 className="text-2xl font-bold text-gray-800 mb-2">AI가 취미를 분석하고 있어요!</h3>
+                        <p className="text-gray-500">잠시만 기다려주세요.</p>
+                    </div>
+                 );
         }
     };
 
     return (
-        // (기존 HobbyRecommend 래퍼 코드와 동일 - 변경 없음)
-        <div className="bg-gray-50 py-32 min-h-screen flex items-center">
+        <div className="bg-gray-50 py-32 min-h-screen flex items-center justify-center">
             <div className="container mx-auto px-4">
                 <AnimatePresence mode="wait">
                     <motion.div
@@ -562,5 +625,8 @@ const HobbyRecommend = () => {
         </div>
     );
 };
+
+// ... (getAiRecommendations 및 기타 컴포넌트 생략) ...
+// (단, 최종 파일에는 모든 코드가 포함되어야 합니다.)
 
 export default HobbyRecommend;

@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const bcrypt = require('bcrypt');
+const bcrypt = require("bcryptjs");
 const jwt = require('jsonwebtoken');
 const axios = require('axios');
 const User = require('../models/User');
@@ -33,8 +33,16 @@ router.post('/signup', async (req, res) => {
         }
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const user = new User({ username, password: hashedPassword, name, nickname, email });
+    // [수정됨] 여기서 비밀번호를 암호화하지 않고 그대로 넘깁니다.
+    // (User 모델의 pre('save') 미들웨어가 자동으로 암호화를 수행하기 때문입니다)
+    const user = new User({ 
+        username, 
+        password, // 👈 암호화된 hashedPassword 대신 원본 password를 넣어야 합니다.
+        name, 
+        nickname, 
+        email 
+    });
+    
     await user.save();
 
     res.status(201).json({ message: '회원가입이 완료되었습니다.' });
@@ -73,7 +81,9 @@ router.post('/login', async (req, res) => {
         return res.status(500).json({ message: '계정에 비밀번호 정보가 없어 로그인할 수 없습니다.' });
     }
 
+    // [확인] bcrypt 대신 bcryptjs를 사용하므로 호환성 문제 없음
     const isValidPassword = await bcrypt.compare(password, hashToCompare);
+    
     if (!isValidPassword) {
       user.failedLoginAttempts += 1;
       user.lastLoginAttempt = new Date();

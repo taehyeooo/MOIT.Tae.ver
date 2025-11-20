@@ -5,6 +5,8 @@ const cookieParser = require("cookie-parser");
 const cors = require("cors");
 const app = express();
 const PORT = 3000;
+// [추가] path 모듈을 가져옵니다.
+const path = require("path");
 
 const userRoutes = require("./routes/user");
 const contactRoutes = require("./routes/contact");
@@ -22,6 +24,10 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
+
+// [핵심 수정] 업로드된 파일이 있는 'uploads' 폴더를 정적(Static) 폴더로 설정합니다.
+// 브라우저가 '/uploads/파일이름'으로 요청하면, 서버는 이 폴더에서 파일을 찾아 응답합니다.
+app.use('/uploads', express.static(path.join(__dirname, 'uploads'))); // 👈 이 줄을 추가합니다.
 
 app.use("/api/auth", userRoutes);
 app.use("/api/contact", contactRoutes);

@@ -4,6 +4,7 @@ const User = require('../models/User');
 const Post = require('../models/Post');
 const Contact = require('../models/Contact');
 const jwt = require('jsonwebtoken');
+const bcrypt = require("bcryptjs");
 
 // --- 관리자 인증 미들웨어 ---
 const verifyAdmin = async (req, res, next) => {

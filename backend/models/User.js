@@ -1,52 +1,30 @@
 const mongoose = require("mongoose");
-const bcrypt = require("bcrypt");
+const bcrypt = require("bcryptjs"); // 👈 bcryptjs로 변경
 const jwt = require("jsonwebtoken");
 
 const userSchema = mongoose.Schema({
-    name: {
-        type: String,
-        maxlength: 50
-    },
-    email: {
-        type: String,
-        trim: true,
-        unique: 1
-    },
-    password: {
-        type: String,
-        minlength: 5
-    },
-    lastname: {
-        type: String,
-        maxlength: 50
-    },
-    role: {
-        type: Number,
-        default: 0
-    },
+    username: { type: String, unique: 1 }, // username 필드 명시
+    name: { type: String, maxlength: 50 },
+    email: { type: String, trim: true, unique: 1 },
+    password: { type: String, minlength: 5 },
+    nickname: { type: String, maxlength: 50 }, // nickname 필드 추가
+    lastname: { type: String, maxlength: 50 },
+    role: { type: Number, default: 0 },
     image: String,
-    token: {
-        type: String
-    },
-    tokenExp: {
-        type: Number
-    },
-    // 설문조사 결과 (JSON 형태)
-    surveyProfile: {
-        type: mongoose.Schema.Types.Mixed, // 유연한 객체 저장
-        default: {} 
-    },
-    // AI 분석 결과 (텍스트 또는 객체)
-    hobbyRecommendation: {
-        type: mongoose.Schema.Types.Mixed,
-        default: null
-    }
+    token: { type: String },
+    tokenExp: { type: Number },
+    isActive: { type: Boolean, default: true }, // 로그인 체크용
+    isLoggedIn: { type: Boolean, default: false },
+    ipAddress: { type: String },
+    surveyProfile: { type: mongoose.Schema.Types.Mixed, default: {} },
+    hobbyRecommendation: { type: mongoose.Schema.Types.Mixed, default: null }
 });
 
-// 비밀번호 암호화
+// 비밀번호 암호화 (회원가입 시 자동 실행)
 userSchema.pre("save", function (next) {
     var user = this;
 
+    // 비밀번호가 변경되었을 때만 암호화
     if (user.isModified("password")) {
         bcrypt.genSalt(10, function (err, salt) {
             if (err) return next(err);
@@ -61,7 +39,6 @@ userSchema.pre("save", function (next) {
     }
 });
 
-// 비밀번호 비교
 userSchema.methods.comparePassword = function (plainPassword, cb) {
     bcrypt.compare(plainPassword, this.password, function (err, isMatch) {
         if (err) return cb(err);
@@ -69,17 +46,16 @@ userSchema.methods.comparePassword = function (plainPassword, cb) {
     });
 };
 
-// 토큰 생성
+// 토큰 생성 메소드
 userSchema.methods.generateToken = function (cb) {
     var user = this;
-    var token = jwt.sign(user._id.toHexString(), process.env.JWT_SECRET); // .env의 비밀키 사용
+    var token = jwt.sign(user._id.toHexString(), process.env.JWT_SECRET);
     user.token = token;
     user.save()
         .then(() => cb(null, user))
         .catch((err) => cb(err));
 };
 
-// 토큰으로 유저 찾기
 userSchema.statics.findByToken = function (token, cb) {
     var user = this;
     jwt.verify(token, process.env.JWT_SECRET, function (err, decoded) {
@@ -91,4 +67,4 @@ userSchema.statics.findByToken = function (token, cb) {
 
 const User = mongoose.model("User", userSchema);
 
-module.exports = { User };
+module.exports = User; // 👈 { User } 가 아니라 User로 내보내는 경우가 많으므로 확인 필요 (위 router에서는 require('../models/User')로 씀)
