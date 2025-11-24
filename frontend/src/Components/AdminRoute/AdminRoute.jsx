@@ -1,6 +1,6 @@
 import React from "react";
 import { Navigate, Outlet } from "react-router-dom";
-import { useAuth } from "../../context/AuthContext.jsx"; // 경로 수정
+import { useAuth } from "../../context/AuthContext.jsx"; 
 
 const AdminRoute = () => {
   const { user, loading } = useAuth();
@@ -9,8 +9,8 @@ const AdminRoute = () => {
     return <div>관리자 권한을 확인 중입니다...</div>;
   }
 
-  // 사용자가 존재하고, 역할이 'admin'일 경우에만 접근 허용
-  if (user && user.role === 'admin') {
+  // [수정 포인트] user.role === 'admin' 이 아니라 숫자 1로 확인해야 합니다.
+  if (user && user.role === 1) {
     return <Outlet />;
   }
 
@@ -19,5 +19,3 @@ const AdminRoute = () => {
 };
 
 export default AdminRoute;
-
-

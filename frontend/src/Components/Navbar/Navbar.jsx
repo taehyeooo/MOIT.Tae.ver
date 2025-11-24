@@ -5,12 +5,15 @@ import { useAuth } from "../../context/AuthContext.jsx";
 import axios from "axios";
 
 // 👇 --- [수정] '커뮤니티' 메뉴를 '문의하기'로 변경하고 경로를 '/contact'로 수정했습니다. --- 👇
+// ...
 const menuItems = [
   { path: "/about", label: "소개" },
   { path: "/recommend", label: "취미 추천" },
   { path: "/meetings", label: "모임" },
+  { path: "/qna", label: "Q&A" }, // 👈 Q&A 메뉴 추가
   { path: "/contact", label: "문의하기" },
 ];
+// ...
 
 const MenuItem = ({ path, label, onClick, isScrolled, isHomePage, isActive }) => (
     <li>
@@ -51,6 +54,7 @@ const Navbar = () => {
             navigate('/');
         }
     };
+    
 
     const navClass = `fixed top-0 left-0 w-full p-4 z-50 transition-all duration-300 ${!isScrolled && isHomePage ? "bg-black bg-opacity-20 text-white" : "bg-white text-black shadow-md"}`;
 

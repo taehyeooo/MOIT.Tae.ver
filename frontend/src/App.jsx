@@ -32,6 +32,9 @@ import AdminContacts from "./Page/Admin/AdminContacts.jsx";
 import AdminPosts from "./Page/Admin/AdminPosts.jsx";
 import AdminCreatePost from "./Page/Admin/AdminCreatePost.jsx";
 import AdminEditPost from "./Page/Admin/AdminEditPost.jsx";
+// 👇 [추가] 새로 만든 관리자 페이지 컴포넌트 임포트
+import AdminUsers from "./Page/Admin/AdminUsers.jsx";
+import AdminMeetings from "./Page/Admin/AdminMeetings.jsx";
 
 
 // --- 라우트 보호 로직 ---
@@ -102,9 +105,10 @@ function App() {
           <Route path="posts/create" element={<AdminCreatePost />} />
           <Route path="posts/edit/:id" element={<AdminEditPost />} />
           <Route path="contacts" element={<AdminContacts />} />
-          {/* 여기에 사용자, 모임 관리 페이지 라우트를 추가할 수 있습니다. */}
-          {/* <Route path="users" element={<AdminUserList />} /> */}
-          {/* <Route path="meetings" element={<AdminMeetingList />} /> */}
+          
+          {/* 👇 [추가] 사용자 관리, 모임 관리 라우트 연결 */}
+          <Route path="users" element={<AdminUsers />} />
+          <Route path="meetings" element={<AdminMeetings />} />
         </Route>
       </Route>
       

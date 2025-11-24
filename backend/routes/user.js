@@ -14,7 +14,8 @@ const { verifyToken } = require('../utils/auth');
  */
 router.post('/signup', async (req, res) => {
   try {
-    const { username, password, name, nickname, email } = req.body;
+    // 1. 클라이언트에서 보낸 adminKey와 role을 받습니다.
+    const { username, password, name, nickname, email, role, adminKey } = req.body;
 
     if (!username || !password || !name || !nickname || !email) {
       return res.status(400).json({ message: '모든 필수 정보를 입력해주세요.' });
@@ -33,14 +34,30 @@ router.post('/signup', async (req, res) => {
         }
     }
 
-    // [수정됨] 여기서 비밀번호를 암호화하지 않고 그대로 넘깁니다.
-    // (User 모델의 pre('save') 미들웨어가 자동으로 암호화를 수행하기 때문입니다)
+    // 2. 역할(role) 결정 로직 추가
+    let userRole = 0; // 기본값: 일반 사용자 (0)
+
+    if (role === 'admin') {
+      // .env 파일에 설정된 ADMIN_KEY와 사용자가 입력한 키를 비교
+      if (!process.env.ADMIN_KEY) {
+         console.error("서버 설정 오류: .env 파일에 ADMIN_KEY가 없습니다.");
+         return res.status(500).json({ message: '서버 설정 오류: 관리자 등록이 불가능합니다.' });
+      }
+
+      if (adminKey !== process.env.ADMIN_KEY) {
+        return res.status(403).json({ message: '관리자 등록 키가 올바르지 않습니다.' });
+      }
+      userRole = 1; // 관리자 권한 부여 (1)
+    }
+
+    // User 모델 인스턴스 생성 (role 포함)
     const user = new User({ 
         username, 
-        password, // 👈 암호화된 hashedPassword 대신 원본 password를 넣어야 합니다.
+        password, 
         name, 
         nickname, 
-        email 
+        email,
+        role: userRole 
     });
     
     await user.save();
@@ -65,7 +82,6 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ message: '사용자 이름과 비밀번호를 모두 입력해주세요.' });
     }
 
-    // Select both possible password fields
     const user = await User.findOne({ username }).select('+password +password_hash');
     if (!user) {
       return res.status(401).json({ message: '아이디 또는 비밀번호가 올바르지 않습니다.' });
@@ -75,13 +91,11 @@ router.post('/login', async (req, res) => {
         return res.status(403).json({ message: '비활성화된 계정입니다. 관리자에게 문의하세요.' });
     }
 
-    // Determine which password field to use
     const hashToCompare = user.password || user.password_hash;
     if (!hashToCompare) {
         return res.status(500).json({ message: '계정에 비밀번호 정보가 없어 로그인할 수 없습니다.' });
     }
 
-    // [확인] bcrypt 대신 bcryptjs를 사용하므로 호환성 문제 없음
     const isValidPassword = await bcrypt.compare(password, hashToCompare);
     
     if (!isValidPassword) {
@@ -103,7 +117,6 @@ router.post('/login', async (req, res) => {
       });
     }
     
-    // Self-healing: If the old field was used, migrate it to the new standard.
     if (user.password_hash && !user.password) {
         user.password = user.password_hash;
         user.password_hash = undefined;
@@ -123,8 +136,9 @@ router.post('/login', async (req, res) => {
     
     await user.save();
 
+    // 토큰에 role 정보도 포함하면 프론트엔드에서 활용하기 좋습니다 (선택사항)
     const token = jwt.sign(
-      { userId: user._id, username: user.username, nickname: user.nickname },
+      { userId: user._id, username: user.username, nickname: user.nickname, role: user.role },
       process.env.JWT_SECRET,
       { expiresIn: '24h' }
     );
@@ -243,7 +257,6 @@ router.put('/profile', verifyToken, async (req, res) => {
             return res.status(404).json({ message: '사용자를 찾을 수 없습니다.' });
         }
 
-        // 닉네임, 이메일 중복 확인
         if (nickname && nickname !== user.nickname) {
             const existingNickname = await User.findOne({ nickname: nickname, _id: { $ne: userId } });
             if (existingNickname) {
@@ -260,7 +273,6 @@ router.put('/profile', verifyToken, async (req, res) => {
             user.email = email;
         }
 
-        // 비밀번호 변경 로직
         if (newPassword) {
             if (!currentPassword) {
                 return res.status(400).json({ message: '현재 비밀번호를 입력해주세요.' });
@@ -283,7 +295,6 @@ router.put('/profile', verifyToken, async (req, res) => {
         res.status(500).json({ message: '서버 오류가 발생했습니다.' });
     }
 });
-
 
 /**
  * ---------------------------------------

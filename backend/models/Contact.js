@@ -3,17 +3,40 @@ const mongoose = require("mongoose");
 const contactSchema = mongoose.Schema({
   name: {
     type: String,
+    required: true,
     maxlength: 50,
   },
   email: {
     type: String,
     trim: true,
-    unique: 1,
+    required: true,
+  },
+  phone: {
+    type: String,
+    maxlength: 20,
   },
   message: {
     type: String,
-    minlength: 5,
+    required: true,
+    minlength: 1,
   },
+  status: {
+    type: String,
+    default: '대기중', 
+  },
+  // 👇 [추가] 답변 내용과 답변 날짜 필드
+  reply: {
+    type: String,
+    default: null
+  },
+  repliedAt: {
+    type: Date,
+    default: null
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now,
+  }
 });
 
 const Contact = mongoose.model("Contact", contactSchema);
