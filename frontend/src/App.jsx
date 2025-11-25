@@ -23,25 +23,36 @@ import MyPage from './Page/Mypage/MyPage.jsx';
 import ProfileEdit from "./Page/ProfileEdit/ProfileEdit.jsx";
 import MeetingRecommend from "./Page/MeetingRecommend/MeetingRecommend.jsx";
 
+// QnABoard 컴포넌트 임포트
+import QnABoard from "./Page/QnA/QnABoard.jsx";
+
 // --- 관리자 페이지 임포트 ---
 import AdminLogin from "./Page/Admin/AdminLogin.jsx";
 import AdminLayout from "./Components/AdminLayout/AdminLayout.jsx";
 import AdminRoute from "./Components/AdminRoute/AdminRoute.jsx";
 import AdminDashboard from "./Page/Admin/AdminDashboard.jsx";
 import AdminContacts from "./Page/Admin/AdminContacts.jsx";
-import AdminPosts from "./Page/Admin/AdminPosts.jsx";
-import AdminCreatePost from "./Page/Admin/AdminCreatePost.jsx";
-import AdminEditPost from "./Page/Admin/AdminEditPost.jsx";
-// 👇 [추가] 새로 만든 관리자 페이지 컴포넌트 임포트
+// 게시물 관리 관련 컴포넌트 임포트 제거 (필요 시 주석 해제)
+// import AdminPosts from "./Page/Admin/AdminPosts.jsx";
+// import AdminCreatePost from "./Page/Admin/AdminCreatePost.jsx";
+// import AdminEditPost from "./Page/Admin/AdminEditPost.jsx";
 import AdminUsers from "./Page/Admin/AdminUsers.jsx";
 import AdminMeetings from "./Page/Admin/AdminMeetings.jsx";
 
 
-// --- 라우트 보호 로직 ---
+// 👇 [수정됨] GuestRoute: 로그인한 상태에서 접근 시 역할에 따라 다르게 리다이렉트
 const GuestRoute = () => {
   const { user } = useAuth();
-  // 사용자가 로그인 상태이면 메인 페이지로 보냅니다.
-  return !user ? <Outlet /> : <Navigate to="/" replace />;
+
+  if (!user) return <Outlet />;
+
+  // 관리자(role === 1)라면 관리자 대시보드로 이동
+  if (user.role === 1) {
+    return <Navigate to="/admin" replace />;
+  }
+
+  // 일반 사용자라면 메인 페이지로 이동
+  return <Navigate to="/" replace />;
 };
 
 const UserProtectedRoute = () => {
@@ -79,6 +90,10 @@ function App() {
         <Route path="board" element={<Board />} />
         <Route path="post/:id" element={<SinglePost />} />
         <Route path="our-services" element={<Services />} />
+        
+        {/* Q&A 게시판 라우트 연결 */}
+        <Route path="qna" element={<QnABoard />} />
+
         <Route path="contact" element={<Contact />} />
         
         {/* 로그인이 필요한 사용자 페이지 */}
@@ -101,12 +116,13 @@ function App() {
       <Route path="/admin" element={<AdminRoute />}>
         <Route element={<AdminLayout />}>
           <Route index element={<AdminDashboard />} />
-          <Route path="posts" element={<AdminPosts />} />
-          <Route path="posts/create" element={<AdminCreatePost />} />
-          <Route path="posts/edit/:id" element={<AdminEditPost />} />
-          <Route path="contacts" element={<AdminContacts />} />
           
-          {/* 👇 [추가] 사용자 관리, 모임 관리 라우트 연결 */}
+          {/* 게시글 관리 라우트 제거됨 */}
+          {/* <Route path="posts" element={<AdminPosts />} /> */}
+          {/* <Route path="posts/create" element={<AdminCreatePost />} /> */}
+          {/* <Route path="posts/edit/:id" element={<AdminEditPost />} /> */}
+          
+          <Route path="contacts" element={<AdminContacts />} />
           <Route path="users" element={<AdminUsers />} />
           <Route path="meetings" element={<AdminMeetings />} />
         </Route>

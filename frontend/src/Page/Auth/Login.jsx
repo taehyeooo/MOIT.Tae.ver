@@ -8,7 +8,6 @@ import { SiNaver } from 'react-icons/si';
 
 
 const Login = () => {
-    // 'general' 또는 'admin' 상태를 저장하여 현재 선택된 탭을 관리합니다.
     const [loginType, setLoginType] = useState('general'); 
     const [formData, setFormData] = useState({
         username: '',
@@ -26,10 +25,9 @@ const Login = () => {
         e.preventDefault();
         setError('');
 
-        // <<< 중요: loginType에 따라 일반 사용자 또는 관리자 API로 요청을 보냅니다.
         const endpoint = loginType === 'general' 
             ? '/api/auth/login' 
-            : '/api/admin/login'; // 관리자 로그인 API 경로
+            : '/api/admin/login';
         
         try {
             const response = await axios.post(endpoint, formData, { withCredentials: true });
@@ -43,8 +41,8 @@ const Login = () => {
                 showConfirmButton: false
             });
 
-            // <<< 중요: 관리자는 관리자 페이지로, 일반 사용자는 메인 페이지로 이동시킵니다.
-            navigate(loginType === 'admin' ? '/admin/posts' : '/');
+            // 👇 [수정] 관리자 로그인 시 '/admin/posts'가 아닌 '/admin'으로 이동하도록 변경
+            navigate(loginType === 'admin' ? '/admin' : '/');
 
         } catch (err) {
             const message = err.response?.data?.message || '로그인 중 오류가 발생했습니다.';
@@ -52,7 +50,6 @@ const Login = () => {
         }
     };
     
-    // 탭 버튼 스타일을 동적으로 결정하는 함수
     const getTabClassName = (type) => {
         return `w-1/2 py-3 text-center cursor-pointer font-semibold transition-all duration-300 ${
             loginType === type
@@ -72,7 +69,6 @@ const Login = () => {
                 <div className="bg-white py-8 px-6 sm:px-10 shadow-xl rounded-2xl">
                     <h2 className="text-center text-3xl font-bold text-gray-800 mb-6">로그인</h2>
 
-                    {/* 로그인 타입 선택 탭: 클릭 시 loginType 상태가 변경됩니다. */}
                     <div className="flex mb-6">
                         <div onClick={() => setLoginType('general')} className={getTabClassName('general')}>
                             일반 로그인
@@ -82,7 +78,6 @@ const Login = () => {
                         </div>
                     </div>
                     
-                    {/* 아래 폼은 loginType 값과 상관없이 동일한 UI를 보여줍니다. */}
                     <form className="space-y-6" onSubmit={handleSubmit}>
                         <div>
                             <label className="text-sm font-medium text-gray-700">이메일</label>

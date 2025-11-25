@@ -12,14 +12,14 @@ const AdminLogin = () => {
   const navigate = useNavigate();
   const { user, setUser } = useAuth();
 
-  // 사용자 정보가 업데이트되면 관리자 페이지로 이동시킵니다.
+  // 사용자 정보가 업데이트되면 관리자 대시보드로 이동시킵니다.
   useEffect(() => {
     if (user) {
-      navigate("/admin/posts", { replace: true });
+      // 1. 수정됨: 존재하지 않는 '/admin/posts' 대신 '/admin' (대시보드)으로 이동
+      navigate("/admin", { replace: true });
     }
   }, [user, navigate]);
 
-  // ❗ 누락되었던 handleChange 함수를 추가합니다.
   const handleChange = (e) => {
     setFormData({
       ...formData,
@@ -32,15 +32,14 @@ const AdminLogin = () => {
     setError(null);
 
     try {
+      // 2. 수정됨: 일반 로그인이 아닌 관리자 전용 로그인 API 사용 (/api/admin/login)
       const response = await axios.post(
-        "http://localhost:3000/api/auth/login",
+        "/api/admin/login", 
         formData,
         { withCredentials: true }
       );
 
       if (response.data.user) {
-        // setUser를 호출하여 AuthContext의 상태를 업데이트합니다.
-        // 그러면 위의 useEffect가 이를 감지하고 페이지를 이동시킵니다.
         setUser(response.data.user);
       }
     } catch (err) {

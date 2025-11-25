@@ -1,6 +1,6 @@
 import React from "react";
 import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
-import { useAuth } from "../../context/AuthContext.jsx"; // 👈 경로를 수정했습니다.
+import { useAuth } from "../../context/AuthContext.jsx";
 import axios from "axios";
 import Swal from "sweetalert2";
 import {
@@ -56,10 +56,13 @@ const AdminLayout = () => {
             <FaClipboardList className="mr-3" />
             모임 관리
           </NavLink>
-          <NavLink to="/admin/posts" className={navLinkClasses}>
+          
+          {/* 👇 게시물 관리 메뉴 제거됨 */}
+          {/* <NavLink to="/admin/posts" className={navLinkClasses}>
             <FaClipboardList className="mr-3" />
             게시물 관리
-          </NavLink>
+          </NavLink> */}
+
           <NavLink to="/admin/contacts" className={navLinkClasses}>
             <FaComments className="mr-3" />
             문의 관리
